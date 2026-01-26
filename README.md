@@ -1,4 +1,4 @@
-# LFM - Lebanese Freelance Marketplace
+# TechTalks - LFM - Lebanese Freelance Marketplace
 
 **Empowering local Lebanese talent through a centralized freelance marketplace.**
 
