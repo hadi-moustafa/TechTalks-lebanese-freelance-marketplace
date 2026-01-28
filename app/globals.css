@@ -3,13 +3,44 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --lebanon-red: #EE161F;
+  --lebanon-green: #00A650;
+  --cedar-dark: #1a4d2e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-lebanon-red: var(--lebanon-red);
+  --color-lebanon-green: var(--lebanon-green);
+  --color-cedar-dark: var(--cedar-dark);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --animate-fade-in: fade-in 0.5s ease-out;
+  --animate-slide-up: slide-up 0.5s ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
 }
 
 @media (prefers-color-scheme: dark) {
