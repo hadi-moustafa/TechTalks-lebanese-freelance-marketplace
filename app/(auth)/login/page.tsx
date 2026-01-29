@@ -64,12 +64,7 @@ export default function LoginPage() {
                         </svg>
                         Google
                     </Button>
-                    <Button variant="social" className="w-full">
-                        <svg className="mr-2 h-4 w-4 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036c-2.148 0-2.797 1.606-2.797 4.16v1.912h4.141l-.542 3.667h-3.599v7.98c-1.644.595-3.376.591-5.019 0z" />
-                        </svg>
-                        Facebook
-                    </Button>
+
                 </div>
             </form>
 
