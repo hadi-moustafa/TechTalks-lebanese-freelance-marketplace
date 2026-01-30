@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+@theme {
+  --color-lira-green-1k: #e8f5e9; /* Pastel 1000 LL Green */
+  --color-lira-pink-5k: #fce4ec; /* Pastel 5000 LL Pink */
+  --color-lira-yellow-10k: #fffde7; /* Pastel 10000 LL Yellow */
+  --color-lira-blue-50k: #e3f2fd; /* Pastel 50000 LL Blue */
+  --color-lira-green-100k: #e0f2f1; /* Pastel 100000 LL Green */
+  --color-lira-text: #263238; /* Dark text for contrast */
+}
+
+@layer utilities {
+  .bg-lebanese-pattern {
+    background-color: var(--color-lira-green-1k);
+    background-image: radial-gradient(var(--color-lira-pink-5k) 1px, transparent 1px), radial-gradient(var(--color-lira-blue-50k) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
