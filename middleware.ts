@@ -4,15 +4,10 @@ import { createServerClient } from "@supabase/ssr";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
+  const path = req.nextUrl.pathname;
 
-  // Public routes (no auth required)
-  const publicPaths = ["/login", "/signup", "/auth", "/auth/callback"];
+  const authPaths = ["/login", "/signup", "/auth", "/auth/callback"];
 
-  if (publicPaths.some(path => req.nextUrl.pathname.startsWith(path))) {
-    return res;
-  }
-
-  // Supabase SSR client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,57 +25,77 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  // Get session
+  // Always get session FIRST
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Block unauthenticated users (except in dev)
+  // -----------------------------
+  // NOT LOGGED IN
+  // -----------------------------
   if (!session) {
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.redirect(new URL("/login", req.url));
+    // allow login/signup
+    if (authPaths.some(p => path.startsWith(p))) {
+      return res;
     }
-    return res;
+
+    // block everything else
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Fetch role from DB
+  // -----------------------------
+  // LOGGED IN
+  // -----------------------------
+
+  // Fetch role
   const { data: user } = await supabase
     .from("users")
     .select("role, is_suspended")
-    .eq("id", session?.user?.id)
+    .eq("id", session.user.id)
     .single();
 
-  // Safety check
   if (!user) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Suspended user block
   if (user.is_suspended) {
     return NextResponse.redirect(new URL("/suspended", req.url));
   }
 
-  const path = req.nextUrl.pathname;
+  // Block auth pages for logged users
+  if (authPaths.some(p => path.startsWith(p))) {
+    const roleRoutes: Record<"admin" | "freelancer" | "client", string> = {
+      admin: "/admin",
+      freelancer: "/freelancer",
+      client: "/client",
+    };
 
-  // RBAC routing
-  const roleRedirectMap: Record<string, string> = {
+    const redirectPath =
+      roleRoutes[user.role as "admin" | "freelancer" | "client"];
+
+    return NextResponse.redirect(new URL(redirectPath, req.url));
+  }
+
+  // Role routing
+  const roleRoutes: Record<"admin" | "freelancer" | "client", string> = {
     admin: "/admin",
     freelancer: "/freelancer",
     client: "/client",
   };
 
-  const redirectPath = roleRedirectMap[user.role];
+  const allowedRoot = roleRoutes[user.role as "admin" | "freelancer" | "client"];
 
-  if (redirectPath && !path.startsWith(redirectPath)) {
-    return NextResponse.redirect(new URL(redirectPath, req.url));
+  // Redirect root
+  if (path === "/") {
+    return NextResponse.redirect(new URL(allowedRoot, req.url));
+  }
+
+  // Prevent cross-role access
+  if (!path.startsWith(allowedRoot)) {
+    return NextResponse.redirect(new URL(allowedRoot, req.url));
   }
 
   return res;
 }
 
-// Ignore static assets
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|images|assets).*)",
-  ],
-};
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|images|assets).*)"] };
