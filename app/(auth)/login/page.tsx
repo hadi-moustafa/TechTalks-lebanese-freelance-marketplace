@@ -106,7 +106,14 @@ export default function LoginPage() {
                 </div>
 
                 <div className="grid gap-4">
-                    <Button variant="social" className="w-full">
+                    <Button variant="social" className="w-full" type="button" onClick={() => {
+                        supabase.auth.signInWithOAuth({
+                            provider: 'google',
+                            options: {
+                                redirectTo: `${location.origin}/auth/callback?next=/onboarding`,
+                            },
+                        })
+                    }}>
                         <svg
                             className="mr-2 h-4 w-4"
                             aria-hidden="true"
