@@ -1,12 +1,31 @@
 'use client';
 
-import { useState } from 'react';
-import { User, Moon, Globe, Camera, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Moon, Globe, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
+import UsernameChangeInput from '@/components/profile/UsernameChangeInput';
+import UsernameService from '@/services/usernameService';
+import PasswordChangeInput from '@/components/profile/PasswordChangeInput';
 
 export default function AdminProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
+    const [currentUsername, setCurrentUsername] = useState("admin_user");
+    const [isLoadingUsername, setIsLoadingUsername] = useState(true);
+
+    // Fetch username from database when component mounts
+    useEffect(() => {
+        async function fetchUsername() {
+            setIsLoadingUsername(true);
+            const username = await UsernameService.getUsername("e5c7a983-44e4-4b5b-98e0-e8329dc209f8");
+            if (username) {
+                setCurrentUsername(username);
+            }
+            setIsLoadingUsername(false);
+        }
+        fetchUsername();
+    }, []);
 
     return (
         <div className="relative">
@@ -21,15 +40,16 @@ export default function AdminProfileMenu() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-lira-green-1k p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-lira-green-1k p-4 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
                         <div className="relative group cursor-pointer">
-                            <div className="w-16 h-16 rounded-full bg-lira-blue-50k flex items-center justify-center text-lira-text overflow-hidden">
-                                <User size={32} />
-                            </div>
-                            <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Camera className="text-white" size={20} />
-                            </div>
+                            <ProfilePictureUpload
+                                userId="e5c7a983-44e4-4b5b-98e0-e8329dc209f8"
+                                currentPictureUrl={null}
+                                userName="Admin User"
+                                bgColor="bg-lira-blue-50k"
+                                iconColor="text-lira-text"
+                            />
                         </div>
                         <div>
                             <h3 className="font-bold text-lg text-lira-text">Admin User</h3>
@@ -38,15 +58,15 @@ export default function AdminProfileMenu() {
                     </div>
 
                     <div className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Username</label>
-                            <Input placeholder="Change username" defaultValue="admin_user" />
-                        </div>
+                        <UsernameChangeInput
+                            userId="e5c7a983-44e4-4b5b-98e0-e8329dc209f8"
+                            currentUsername={currentUsername}
+                            onUpdate={(newUsername) => setCurrentUsername(newUsername)}
+                        />
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Password</label>
-                            <Input type="password" placeholder="New password" />
-                            <p className="text-xs text-orange-500">Email confirmation required</p>
+                        <div className="pt-4 border-t border-gray-100">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Change Password</h4>
+                            <PasswordChangeInput userId="e5c7a983-44e4-4b5b-98e0-e8329dc209f8" />
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
