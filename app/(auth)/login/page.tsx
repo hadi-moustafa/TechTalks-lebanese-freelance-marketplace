@@ -153,7 +153,7 @@ export default function LoginPage() {
                   loading={loading}
                   disabled={otp.length !== 6}
                 >
-                  {loading ? 'Verifying...' : 'Verify & Continue to Onboarding'}
+                  {loading ? 'Verifying...' : 'Verify'}
                 </Button>
               </form>
 
@@ -233,7 +233,7 @@ export default function LoginPage() {
             size="lg"
             loading={loading}
           >
-            Login & Send OTP
+            Login 
           </Button>
 
           <div className="relative">
