@@ -1,10 +1,12 @@
 import * as React from "react"
+import { ReactNode } from 'react'
 
 interface AuthCardProps {
     children: React.ReactNode
     title: string
     subtitle?: string
     imageSideContent?: React.ReactNode
+    
 }
 
 export function AuthCard({ children, title, subtitle, imageSideContent }: AuthCardProps) {
