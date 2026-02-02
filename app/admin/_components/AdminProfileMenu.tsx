@@ -9,10 +9,19 @@ import UsernameChangeInput from '@/components/profile/UsernameChangeInput';
 import UsernameService from '@/services/usernameService';
 import PasswordChangeInput from '@/components/profile/PasswordChangeInput';
 
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+
 export default function AdminProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const [currentUsername, setCurrentUsername] = useState("admin_user");
     const [isLoadingUsername, setIsLoadingUsername] = useState(true);
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        router.push('/login');
+    };
 
     // Fetch username from database when component mounts
     useEffect(() => {
@@ -88,7 +97,11 @@ export default function AdminProfileMenu() {
                         </div>
 
                         <div className="pt-4 border-t border-gray-100">
-                            <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={handleSignOut}
+                            >
                                 <LogOut size={18} className="mr-2" />
                                 Sign Out
                             </Button>

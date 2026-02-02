@@ -91,6 +91,10 @@ class UsernameService {
         .single()
 
       if (error) {
+        // If row not found (PGRST116), just return null without error
+        if (error.code === 'PGRST116') {
+          return null;
+        }
         console.error('Error fetching username:', error)
         return null
       }

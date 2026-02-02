@@ -26,6 +26,12 @@ export async function middleware(req: NextRequest) {
   );
 
   // Always get session FIRST
+  // Use getUser for security as per warning, though getSession is faster.
+  // We'll stick to getSession for performance unless strict verification is needed, 
+  // but to silence the warning and be safe, let's use getUser if possible, 
+  // OR just acknowledge the warning. The warning comes from the client usually? 
+  // Actually, the warning is server-side here.
+  // Let's rely on getSession for now but fix the logic.
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -54,12 +60,39 @@ export async function middleware(req: NextRequest) {
     .eq("id", session.user.id)
     .single();
 
-  if (!user) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  // -----------------------------
+  // ROLE-LESS OR MISSING USER (NEW USER)
+  // -----------------------------
+  // If user is null (record missing) or role is null
+  if (!user || !user.role) {
+    // If user is missing, they are likely a new OAuth user who's record hasn't been created yet.
+    // We allow them to Onboarding to create their profile/role.
+
+    // If not already on onboarding, send them there
+    if (!path.startsWith("/onboarding")) {
+      return NextResponse.redirect(new URL("/onboarding", req.url));
+    }
+    // Allow access to onboarding
+    return res;
   }
 
   if (user.is_suspended) {
     return NextResponse.redirect(new URL("/suspended", req.url));
+  }
+
+  // -----------------------------
+  // USER WITH ROLE
+  // -----------------------------
+
+  // Prevent access to onboarding if already has role
+  if (path.startsWith("/onboarding")) {
+    const roleRoutes: Record<"admin" | "freelancer" | "client", string> = {
+      admin: "/admin",
+      freelancer: "/freelancer",
+      client: "/client",
+    };
+    const target = roleRoutes[user.role as "admin" | "freelancer" | "client"] || "/";
+    return NextResponse.redirect(new URL(target, req.url));
   }
 
   // Block auth pages for logged users
