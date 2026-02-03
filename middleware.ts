@@ -6,7 +6,7 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const path = req.nextUrl.pathname;
 
-  const authPaths = ["/login", "/signup", "/auth", "/auth/callback"];
+  const authPaths = ["/login", "/signup", "/auth", "/auth/callback", "/api/auth"];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
