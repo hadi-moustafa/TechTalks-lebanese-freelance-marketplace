@@ -3,18 +3,13 @@
 import { useState, useEffect } from 'react';
 import { User, Moon, Globe, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-<<<<<<< HEAD
-
-=======
-import { Input } from '@/components/ui/Input';
 import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
 import UsernameChangeInput from '@/components/profile/UsernameChangeInput';
 import UsernameService from '@/services/usernameService';
 import PasswordChangeInput from '@/components/profile/PasswordChangeInput';
 
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
->>>>>>> origin/main
+import { supabase } from '@/app/supabase/client';
 
 export default function AdminProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
@@ -23,7 +18,7 @@ export default function AdminProfileMenu() {
     const router = useRouter();
 
     const handleSignOut = async () => {
-        await supabase.auth.signOut();
+        await fetch('/api/auth/signout', { method: 'POST' })
         router.push('/login');
     };
 
@@ -71,25 +66,6 @@ export default function AdminProfileMenu() {
                     </div>
 
                     <div className="space-y-4">
-<<<<<<< HEAD
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Username</label>
-                            <input
-                                className="w-full pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
-                                placeholder="Change username"
-                                defaultValue="admin_user"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Password</label>
-                            <input
-                                type="password"
-                                className="w-full pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
-                                placeholder="New password"
-                            />
-                            <p className="text-xs text-orange-500">Email confirmation required</p>
-=======
                         <UsernameChangeInput
                             userId="e5c7a983-44e4-4b5b-98e0-e8329dc209f8"
                             currentUsername={currentUsername}
@@ -99,7 +75,6 @@ export default function AdminProfileMenu() {
                         <div className="pt-4 border-t border-gray-100">
                             <h4 className="text-sm font-semibold text-gray-700 mb-3">Change Password</h4>
                             <PasswordChangeInput userId="e5c7a983-44e4-4b5b-98e0-e8329dc209f8" />
->>>>>>> origin/main
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
@@ -124,14 +99,7 @@ export default function AdminProfileMenu() {
                             <Button
                                 variant="ghost"
                                 className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
-<<<<<<< HEAD
-                                onClick={async () => {
-                                    await fetch('/api/auth/signout', { method: 'POST' })
-                                    window.location.href = '/login'
-                                }}
-=======
                                 onClick={handleSignOut}
->>>>>>> origin/main
                             >
                                 <LogOut size={18} className="mr-2" />
                                 Sign Out
