@@ -1,11 +1,12 @@
+import { createBrowserClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co'
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'example-key'
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-// Public client for browser
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Public client for browser (Handles Cookies for SSR/Middleware)
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
 // Admin client for server-side operations (with service role key)
 export const supabaseAdmin = () => {
