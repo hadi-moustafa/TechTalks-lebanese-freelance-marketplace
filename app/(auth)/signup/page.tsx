@@ -66,8 +66,19 @@ export default function SignupPage() {
                 })
             })
 
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error)
+            let data;
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                data = await res.json();
+            } else {
+                const text = await res.text();
+                // If not JSON, it's likely a crash or 404/500 HTML page
+                throw new Error(`Server Error (${res.status}): ${text.substring(0, 50)}...`);
+            }
+
+            if (!res.ok) {
+                throw new Error(data.error || `Error ${res.status}: ${res.statusText}`);
+            }
 
             // 2. User created and confirmed. Now log them in.
             const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -81,7 +92,8 @@ export default function SignupPage() {
             router.push('/onboarding')
 
         } catch (err: any) {
-            setError(err.message)
+            console.error("Signup Error:", err);
+            setError(err.message || "An unexpected error occurred. Please try again.")
         } finally {
             setLoading(false)
         }
