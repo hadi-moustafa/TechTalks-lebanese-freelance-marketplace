@@ -1,7 +1,6 @@
 'use server'
 
-import bcrypt from 'bcryptjs'
-import { supabase } from '@/app/supabase/client'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { sendOTPEmail } from '@/lib/services/email'
 
@@ -14,51 +13,54 @@ export async function loginAction(formData: FormData) {
       return { success: false, message: 'Email and password are required' }
     }
 
-    // Query user from your custom users table
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .limit(1)
-
-    if (error) {
-      console.error('Database error:', error)
-      return { success: false, message: 'Database error occurred' }
-    }
-
-    if (!users || users.length === 0) {
-      return { success: false, message: 'Invalid email or password' }
-    }
-
-    const user = users[0]
-
-    // Compare password
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      return { success: false, message: 'Invalid email or password' }
-    }
-
-    // Generate session
-    const session = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      userName: user.email.split('@')[0],
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000
-    }
-
-    // Store session in cookies
     const cookieStore = await cookies()
-    cookieStore.set('session', JSON.stringify(session), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60,
+
+    // Create server client to handle auth and cookies
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // The `setAll` method was called from a Server Component.
+            }
+          },
+        },
+      }
+    )
+
+    // Sign in with Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     })
 
-    // Determine redirect URL
+    if (error) {
+      console.error('Login error:', error.message)
+      return { success: false, message: 'Invalid email or password' }
+    }
+
+    if (!data.session) {
+      return { success: false, message: 'Login failed to create session' }
+    }
+
+    // Check public.users for role
+    const { data: userRecord } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
+
+    const role = userRecord?.role;
     let redirectTo = '/onboarding';
-    const role = session.role?.toLowerCase();
 
     if (role === 'admin') {
       redirectTo = '/admin';
@@ -115,46 +117,48 @@ export async function verifyOTPAction(formData: FormData) {
     // OTP verified successfully
     cookieStore.delete('otp')
 
-    // Get user role from session
-    const sessionCookie = cookieStore.get('session')
-    if (sessionCookie) {
-      const session = JSON.parse(sessionCookie.value)
-
-      // Update session to mark as verified
-      const updatedSession = {
-        ...session,
-        emailVerified: true,
-        verifiedAt: Date.now()
+    // Get user role from session (Standard Supabase Session)
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            // Only reading session here mostly, but ok
+          },
+        },
       }
+    )
 
-      cookieStore.set('session', JSON.stringify(updatedSession), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60,
-      })
+    const { data: { session } } = await supabase.auth.getSession();
 
-      // Redirect based on role
-      if (session.role === 'admin') {
-        return {
-          success: true,
-          message: 'Email verified successfully!',
-          redirectTo: '/admin'
-        }
-      } else if (session.role === 'freelancer') {
-        return {
-          success: true,
-          message: 'Email verified successfully!',
-          redirectTo: '/freelancer'
-        }
-      } else if (session.role === 'client') {
-        return {
-          success: true,
-          message: 'Email verified successfully!',
-          redirectTo: '/client'
-        }
+    if (session) {
+      const { data: userRecord } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      const role = userRecord?.role;
+
+      if (role === 'admin') {
+        return { success: true, message: 'Verified!', redirectTo: '/admin' }
+      } else if (role === 'freelancer') {
+        return { success: true, message: 'Verified!', redirectTo: '/freelancer' }
+      } else if (role === 'client') {
+        return { success: true, message: 'Verified!', redirectTo: '/client' }
       }
     }
+
+    // Default or if no session (Note: OTP verification usually happens BEFORE login or for 2FA. 
+    // In this app, Signup uses a different API route. Login doesn't require OTP anymore by user request.
+    // So this verifyOTPAction might be legacy or for password reset? 
+    // The user said "signup which creates an account after confirming an otp".
+    // That uses /api/auth/signup/route.ts.
+    // So this action might be unused for now, but keeping it safe.)
 
     return {
       success: true,
@@ -204,13 +208,6 @@ export async function resendOTPAction(formData: FormData) {
       otp: newOtp,
       userName: userName
     })
-
-    console.log('='.repeat(50))
-    console.log('RESEND EMAIL RESULT:')
-    console.log(`✅ Success: ${emailResult.success}`)
-    console.log(`📧 To: ${email}`)
-    console.log(`🔐 NEW OTP: ${newOtp}`)
-    console.log('='.repeat(50))
 
     return {
       success: true,

@@ -32,8 +32,48 @@ export async function GET(request: NextRequest) {
                 },
             }
         );
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) {
+        const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (!error && user) {
+            // SYNC USER TO PUBLIC TABLE
+            const { data: existingUser } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            if (!existingUser) {
+                // Create public user record
+                const email = user.email!;
+                const username = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0];
+                const avatar = user.user_metadata?.avatar_url;
+
+                await supabase.from('users').insert({
+                    id: user.id,
+                    email: email,
+                    username: username,
+                    profile_pic: avatar,
+                    password_hash: 'oauth_provider_placeholder',
+                    role: null
+                });
+
+                // Redirect to onboarding for new users
+                return NextResponse.redirect(`${origin}/onboarding`);
+            }
+
+            // Existing user - redirect based on role or default to next param
+            if (existingUser.role) {
+                // If next is onboarding but they have a role, send to dashboard
+                if (next === '/onboarding') {
+                    const roleRoutes: Record<string, string> = {
+                        admin: "/admin",
+                        freelancer: "/freelancer",
+                        client: "/client",
+                    };
+                    return NextResponse.redirect(`${origin}${roleRoutes[existingUser.role] || '/'}`);
+                }
+            }
+
             return NextResponse.redirect(`${origin}${next}`);
         }
     }
