@@ -18,9 +18,17 @@ export default function AdminProfileMenu() {
     const router = useRouter();
 
     const handleSignOut = async () => {
-        await fetch('/api/auth/signout', { method: 'POST' });
-        router.refresh();
-        router.replace('/login');
+        try {
+            console.log("Signout clicked");
+            await fetch('/api/auth/signout', { method: 'POST', cache: 'no-store' });
+            console.log("Signout API called. Refreshing...");
+            router.refresh();
+            router.replace('/login');
+        } catch (error) {
+            console.error("Signout failed:", error);
+            // Fallback
+            window.location.href = '/login';
+        }
     };
 
     // Fetch username from database when component mounts
