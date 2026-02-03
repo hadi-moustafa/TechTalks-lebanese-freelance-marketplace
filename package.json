@@ -36,6 +36,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.30",
     "@types/nodemailer": "^7.0.9",
+    "@types/otp-generator": "^4.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",

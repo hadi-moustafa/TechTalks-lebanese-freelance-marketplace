@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Moon, Globe, Camera, LogOut, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+
 
 export default function ClientProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
@@ -40,12 +40,20 @@ export default function ClientProfileMenu() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Username</label>
-                            <Input placeholder="Change username" defaultValue="happy_client" />
+                            <input
+                                className="w-full pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
+                                placeholder="Change username"
+                                defaultValue="happy_client"
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Password</label>
-                            <Input type="password" placeholder="New password" />
+                            <input
+                                type="password"
+                                className="w-full pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
+                                placeholder="New password"
+                            />
                             <p className="text-xs text-orange-500">Email confirmation required</p>
                         </div>
 
@@ -68,7 +76,14 @@ export default function ClientProfileMenu() {
                         </div>
 
                         <div className="pt-4 border-t border-gray-100">
-                            <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={async () => {
+                                    await fetch('/api/auth/signout', { method: 'POST' })
+                                    window.location.href = '/login'
+                                }}
+                            >
                                 <LogOut size={18} className="mr-2" />
                                 Sign Out
                             </Button>

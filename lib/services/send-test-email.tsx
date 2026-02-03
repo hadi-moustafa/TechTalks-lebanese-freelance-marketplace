@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { emailService } from './email'
+import { sendOTPEmail } from './email'
 
 export default function SendTestEmail() {
   const [email, setEmail] = useState('')
@@ -19,14 +19,17 @@ export default function SendTestEmail() {
 
     try {
       const otp = Math.floor(100000 + Math.random() * 900000).toString()
-      const success = await emailService.sendOTPEmail(email, otp)
-      
-      if (success) {
+      const result = await sendOTPEmail({ email, otp })
+
+      if (result.success) {
         setMessage(`Test OTP email sent to ${email} with code: ${otp}`)
         setEmail('')
+      } else {
+        setMessage(`Error: ${result.error}`)
       }
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`)
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error)
+      setMessage(`Error: ${errMsg}`)
     } finally {
       setLoading(false)
     }

@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react'
 interface ButtonProps {
   children: ReactNode
   type?: 'button' | 'submit' | 'reset'
-  variant?: 'default' | 'social' | 'outline'
+  variant?: 'default' | 'social' | 'outline' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
   className?: string
   onClick?: () => void
@@ -12,9 +12,9 @@ interface ButtonProps {
   loading?: boolean
 }
 
-export function Button({ 
-  children, 
-  type = 'button', 
+export function Button({
+  children,
+  type = 'button',
   variant = 'default',
   size = 'md',
   className = '',
@@ -23,11 +23,12 @@ export function Button({
   loading = false
 }: ButtonProps) {
   const baseStyles = 'font-medium transition-colors duration-200 flex items-center justify-center'
-  
+
   const variantStyles = {
     default: 'bg-lebanon-green hover:bg-green-700 text-white',
     social: 'border border-gray-300 text-gray-700 hover:bg-gray-50',
-    outline: 'border border-lebanon-green text-lebanon-green hover:bg-lebanon-green/10'
+    outline: 'border border-lebanon-green text-lebanon-green hover:bg-lebanon-green/10',
+    ghost: 'bg-transparent hover:bg-gray-100 text-gray-700'
   }
 
   const sizeStyles = {

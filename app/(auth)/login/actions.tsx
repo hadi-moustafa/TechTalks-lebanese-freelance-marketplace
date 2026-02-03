@@ -1,8 +1,9 @@
 'use server'
 
+import bcrypt from 'bcryptjs'
 import { supabase } from '@/app/supabase/client'
 import { cookies } from 'next/headers'
-import { sendOTPEmail } from '@/lib/services/email' // Updated import
+import { sendOTPEmail } from '@/lib/services/email'
 
 export async function loginAction(formData: FormData) {
   try {
@@ -32,7 +33,8 @@ export async function loginAction(formData: FormData) {
     const user = users[0]
 
     // Compare password
-    if (user.password_hash !== password) {
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
       return { success: false, message: 'Invalid email or password' }
     }
 
@@ -54,57 +56,26 @@ export async function loginAction(formData: FormData) {
       maxAge: 24 * 60 * 60,
     })
 
-    // Generate OTP for verification
-    const otp = Math.floor(100000 + Math.random() * 900000).toString()
-    
-    // Store OTP in cookies
-    const otpExpiresAt = Date.now() + 10 * 60 * 1000
-    cookieStore.set('otp', JSON.stringify({
-      code: otp,
-      email: email,
-      expiresAt: otpExpiresAt
-    }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 10 * 60,
-    })
+    // Determine redirect URL
+    let redirectTo = '/onboarding';
+    const role = session.role?.toLowerCase();
 
-    // SEND OTP TO REAL EMAIL
-    console.log(`🚀 SENDING OTP TO: ${email}`)
-    const emailResult = await sendOTPEmail({
-      email: email,
-      otp: otp,
-      userName: session.userName
-    })
-
-    console.log('='.repeat(50))
-    console.log('EMAIL SENDING RESULT:')
-    console.log(`✅ Success: ${emailResult.success}`)
-    console.log(`📧 To: ${email}`)
-    console.log(`🔐 OTP: ${otp}`)
-    
-    if (!emailResult.success) {
-      console.log(`❌ Error: ${emailResult.error}`)
-      console.log(`⚠️ Email failed, but OTP is: ${otp}`)
-      console.log(`📧 Please check ${email} inbox or spam folder`)
-    } else {
-      console.log(`✅ Email sent successfully!`)
-      console.log(`💌 Check ${email} for the OTP`)
-    }
-    console.log('='.repeat(50))
-
-    return { 
-      success: true, 
-      message: emailResult.success 
-        ? 'Login successful! Check your email for the OTP code.' 
-        : 'Login successful! Email may be delayed. Check console for OTP.',
-      otp: otp, // Always return OTP
-      requiresOTP: true,
-      emailSent: emailResult.success
+    if (role === 'admin') {
+      redirectTo = '/admin';
+    } else if (role === 'freelancer') {
+      redirectTo = '/freelancer';
+    } else if (role === 'client') {
+      redirectTo = '/client';
     }
 
-  } catch (error: any) {
+    return {
+      success: true,
+      message: 'Login successful!',
+      redirectTo,
+      requiresOTP: false,
+    }
+
+  } catch (error: unknown) {
     console.error('Login error:', error)
     return { success: false, message: 'An error occurred during login' }
   }
@@ -121,13 +92,13 @@ export async function verifyOTPAction(formData: FormData) {
 
     const cookieStore = await cookies()
     const otpCookie = cookieStore.get('otp')
-    
+
     if (!otpCookie) {
       return { success: false, message: 'OTP expired or not found' }
     }
 
     const otpData = JSON.parse(otpCookie.value)
-    
+
     if (otpData.email !== email) {
       return { success: false, message: 'Invalid OTP session' }
     }
@@ -143,50 +114,50 @@ export async function verifyOTPAction(formData: FormData) {
 
     // OTP verified successfully
     cookieStore.delete('otp')
-    
+
     // Get user role from session
     const sessionCookie = cookieStore.get('session')
     if (sessionCookie) {
       const session = JSON.parse(sessionCookie.value)
-      
+
       // Update session to mark as verified
       const updatedSession = {
         ...session,
         emailVerified: true,
         verifiedAt: Date.now()
       }
-      
+
       cookieStore.set('session', JSON.stringify(updatedSession), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 24 * 60 * 60,
       })
-      
+
       // Redirect based on role
       if (session.role === 'admin') {
-        return { 
-          success: true, 
+        return {
+          success: true,
           message: 'Email verified successfully!',
           redirectTo: '/admin'
         }
       } else if (session.role === 'freelancer') {
-        return { 
-          success: true, 
+        return {
+          success: true,
           message: 'Email verified successfully!',
           redirectTo: '/freelancer'
         }
       } else if (session.role === 'client') {
-        return { 
-          success: true, 
+        return {
+          success: true,
           message: 'Email verified successfully!',
           redirectTo: '/client'
         }
       }
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'Email verified successfully!',
       redirectTo: '/onboarding'
     }
@@ -207,11 +178,11 @@ export async function resendOTPAction(formData: FormData) {
 
     // Generate new OTP
     const newOtp = Math.floor(100000 + Math.random() * 900000).toString()
-    
+
     // Store new OTP in cookies
     const cookieStore = await cookies()
     const otpExpiresAt = Date.now() + 10 * 60 * 1000
-    
+
     cookieStore.set('otp', JSON.stringify({
       code: newOtp,
       email: email,
@@ -241,13 +212,13 @@ export async function resendOTPAction(formData: FormData) {
     console.log(`🔐 NEW OTP: ${newOtp}`)
     console.log('='.repeat(50))
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'New OTP has been sent to your email.',
       otp: newOtp
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Resend OTP error:', error)
     return { success: false, message: 'Failed to resend OTP. Please try again.' }
   }

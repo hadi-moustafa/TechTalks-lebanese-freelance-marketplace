@@ -6,10 +6,10 @@ interface AuthCardProps {
     title: string
     subtitle?: string
     imageSideContent?: React.ReactNode
-    
+    className?: string
 }
 
-export function AuthCard({ children, title, subtitle, imageSideContent }: AuthCardProps) {
+export function AuthCard({ children, title, subtitle, imageSideContent, className = "" }: AuthCardProps) {
     return (
         <div
             className="min-h-screen w-full flex items-center justify-center p-4 sm:p-8 animate-fade-in font-sans relative bg-cover bg-center bg-no-repeat bg-fixed"
@@ -18,7 +18,7 @@ export function AuthCard({ children, title, subtitle, imageSideContent }: AuthCa
             {/* Brightening Overlay */}
             <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-0" />
 
-            <div className="w-full max-w-5xl bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden grid lg:grid-cols-2 min-h-[600px] border border-white/60 ring-1 ring-gray-100 relative z-10 transition-all duration-500 hover:shadow-3xl">
+            <div className={`w-full max-w-5xl bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden grid lg:grid-cols-2 min-h-[600px] border border-white/60 ring-1 ring-gray-100 relative z-10 transition-all duration-500 hover:shadow-3xl ${className}`}>
 
                 {/* Form Side */}
                 <div className="p-8 md:p-12 flex flex-col justify-center space-y-8 order-2 lg:order-1 relative bg-white/50">

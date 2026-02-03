@@ -12,16 +12,16 @@ interface InputProps {
   name?: string
 }
 
-export function Input({ 
-  label, 
-  type, 
-  placeholder, 
-  icon, 
-  required, 
-  value, 
+export function Input({
+  label,
+  type,
+  placeholder,
+  icon,
+  required,
+  value,
   onChange,
   error,
-  name 
+  name
 }: InputProps) {
   return (
     <div className="space-y-2">
@@ -40,7 +40,7 @@ export function Input({
           name={name}
           value={value}
           onChange={onChange}
-          className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-3 border ${error ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors`}
+          className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-3 border ${error ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400`}
           placeholder={placeholder}
           required={required}
         />

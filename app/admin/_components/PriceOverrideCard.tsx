@@ -2,7 +2,7 @@
 
 import { DollarSign, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+
 
 export default function PriceOverrideCard() {
     return (
@@ -29,7 +29,11 @@ export default function PriceOverrideCard() {
                 <div className="space-y-3">
                     <label className="text-sm font-medium text-gray-700">Override Median Price</label>
                     <div className="flex gap-2">
-                        <Input placeholder="Enter new price" type="number" className="flex-1" />
+                        <input
+                            className="flex-1 pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
+                            placeholder="Enter new price"
+                            type="number"
+                        />
                         <Button className="bg-green-600 hover:bg-green-700 text-white shadow-md">
                             <RefreshCw size={16} className="mr-2" />
                             Update
