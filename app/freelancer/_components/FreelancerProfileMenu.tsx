@@ -19,8 +19,9 @@ export default function FreelancerProfileMenu() {
     const router = useRouter();
 
     const handleSignOut = async () => {
-        await supabase.auth.signOut();
-        router.push('/login');
+        await fetch('/api/auth/signout', { method: 'POST' });
+        router.refresh();
+        router.replace('/login');
     };
 
     // Fetch username from database when component mounts
@@ -108,10 +109,7 @@ export default function FreelancerProfileMenu() {
                             <Button
                                 variant="ghost"
                                 className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
-                                onClick={async () => {
-                                    await fetch('/api/auth/signout', { method: 'POST' })
-                                    window.location.href = '/login'
-                                }}
+                                onClick={handleSignOut}
                             >
                                 <LogOut size={18} className="mr-2" />
                                 Sign Out
