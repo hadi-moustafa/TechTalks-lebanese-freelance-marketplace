@@ -18,8 +18,9 @@ export default function AdminProfileMenu() {
     const router = useRouter();
 
     const handleSignOut = async () => {
-        await fetch('/api/auth/signout', { method: 'POST' })
-        router.push('/login');
+        await fetch('/api/auth/signout', { method: 'POST' });
+        router.refresh();
+        router.replace('/login');
     };
 
     // Fetch username from database when component mounts

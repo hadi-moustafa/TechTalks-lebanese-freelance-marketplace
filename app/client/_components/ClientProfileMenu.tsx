@@ -18,7 +18,8 @@ export default function ClientProfileMenu() {
 
     const handleSignOut = async () => {
         await fetch('/api/auth/signout', { method: 'POST' })
-        router.push('/login');
+        router.refresh();
+        router.replace('/login');
     };
 
     // Fetch username from database when component mounts

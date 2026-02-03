@@ -7,8 +7,8 @@ export async function POST(req: NextRequest) {
     const cookieStore = await cookies()
 
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'example-key',
         {
             cookies: {
                 getAll() {
@@ -38,7 +38,5 @@ export async function POST(req: NextRequest) {
         await supabase.auth.signOut()
     }
 
-    return NextResponse.redirect(new URL('/login', req.url), {
-        status: 302,
-    })
+    return NextResponse.json({ success: true })
 }
