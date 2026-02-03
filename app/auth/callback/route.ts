@@ -45,24 +45,25 @@ export async function GET(request: NextRequest) {
 
             // 2. If not found by ID, check by Email (to link accounts or handle pre-filled data)
             if (!existingUser && user.email) {
+                console.log(`[GoogleAuth] User ${user.id} not found by ID. Checking for email: ${user.email}`);
                 const { data: userByEmail } = await supabase
                     .from('users')
                     .select('*')
                     .ilike('email', user.email)
-                    .single();
+                    .maybeSingle(); // Use maybeSingle to avoid 406 error if multiple found (though should be unique)
 
                 if (userByEmail) {
+                    console.log(`[GoogleAuth] Found existing user by email: ${userByEmail.id} (Role: ${userByEmail.role})`);
                     existingUser = userByEmail;
-                    // Optional: If we found them by email but IDs differ, we might want to update the ID? 
-                    // Supabase Auth ID cannot be easily changed in public table if it's a PK.
-                    // Assuming 'users.id' is a FK to auth.users.id.
-                    // If they are different, it means the public.users row is "orphaned" or from a different auth provider.
-                    // We should ideally update the ID to match the new Auth ID if possible, OR just trust the role.
-                    // For LFM, let's assume valid linking if email matches.
+                } else {
+                    console.log(`[GoogleAuth] No user found by email.`);
                 }
+            } else if (existingUser) {
+                console.log(`[GoogleAuth] Found existing user by ID: ${existingUser.id} (Role: ${existingUser.role})`);
             }
 
             if (!existingUser) {
+                console.log(`[GoogleAuth] Creating NEW user public record for ${user.email}`);
                 // Create public user record
                 const email = user.email!;
                 const username = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0];
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
 
             // Existing user - redirect based on role or default to next param
             if (existingUser.role) {
+                console.log(`[GoogleAuth] User has role: ${existingUser.role}. Next param is: ${next}`);
                 // If next is onboarding but they have a role, send to dashboard
                 if (next === '/onboarding') {
                     const roleRoutes: Record<string, string> = {
@@ -98,8 +100,12 @@ export async function GET(request: NextRequest) {
                         freelancer: "/freelancer",
                         client: "/client",
                     };
-                    return NextResponse.redirect(`${origin}${roleRoutes[existingUser.role] || '/'}`);
+                    const target = roleRoutes[existingUser.role.toLowerCase()] || '/';
+                    console.log(`[GoogleAuth] Redirecting to dashboard: ${target}`);
+                    return NextResponse.redirect(`${origin}${target}`);
                 }
+            } else {
+                console.log(`[GoogleAuth] User exists but has NO ROLE. Redirecting to ${next}`);
             }
 
             return NextResponse.redirect(`${origin}${next}`);
