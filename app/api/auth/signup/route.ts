@@ -40,6 +40,11 @@ export async function POST(req: Request) {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // 2. Create User using Admin Client (Auto-confirm email)
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error("FATAL: Missing SUPABASE_SERVICE_ROLE_KEY in environment");
+            return NextResponse.json({ error: 'Server Configuration Error: Missing Service Role Key' }, { status: 500 });
+        }
+
         const admin = supabaseAdmin();
         const { data: user, error: createError } = await admin.auth.admin.createUser({
             email,
