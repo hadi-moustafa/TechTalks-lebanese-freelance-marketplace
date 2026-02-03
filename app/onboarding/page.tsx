@@ -1,63 +1,55 @@
 "use client"
 
-import { AuthCard } from "@/components/auth/AuthCard"
-import { Button } from "@/components/ui/Button"
-import { Briefcase, User } from "lucide-react"
 import { useState } from "react"
-import { supabase } from "@/lib/supabaseClient"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/app/supabase/client"
+import { Button } from "@/components/ui/Button"
+import { Briefcase, User, CheckCircle } from "lucide-react"
+import { AuthCard } from "@/components/auth/AuthCard"
+import toast from "react-hot-toast"
 
 export default function OnboardingPage() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [selectedRole, setSelectedRole] = useState<'client' | 'freelancer' | null>(null)
 
-    const handleRoleSelection = async (role: 'freelancer' | 'client') => {
+    const handleRoleSelection = (role: 'client' | 'freelancer') => {
+        setSelectedRole(role)
+    }
+
+    const handleContinue = async () => {
+        if (!selectedRole) return
+
         setLoading(true)
         try {
             const { data: { user } } = await supabase.auth.getUser()
 
             if (!user) {
-                alert("No user found. Please login again.")
-                router.push("/login")
+                toast.error("User not authenticated")
+                router.push('/login')
                 return
             }
 
-            // Upsert the user with the role.
-            // We use upsert to handle both "update existing role-less user" and "create new user who has no record".
-            // Note: We need to handle required fields. If 'email' and 'password_hash' are required, we must provide them.
-            // For OAuth, password_hash is tricky if enforced by DB. We'll try to use the user's email.
-            // A dummy hash might be needed if the DB enforces it and there's no trigger.
-
-            const updates = {
-                id: user.id,
-                email: user.email!,
-                role: role,
-                // If the DB strictly requires password_hash and we are a Google user, this might fail unless we provide one.
-                // Assuming 'oauth' or similar placeholder is acceptable or the DB constraint allows nulls for oauth (but schema said NOT NULL).
-                // Let's try to provide a placeholder if it's missing from DB logic, but ideally the DB should handle this.
-                // For now, we only send what we know. If it fails, we catch it.
-                // However, 'upsert' works best if we provide all necessary fields for a NEW row.
-                password_hash: "oauth_provider_placeholder", // Safe fallback for OAuth users if constraint is strict
-                subscription_tier: 'free', // Default
-                username: user.user_metadata?.full_name || user.email?.split('@')[0],
-                profile_pic: user.user_metadata?.avatar_url
-            }
-
-            // We perform an upset (insert or update)
+            // Update role in public.users
             const { error } = await supabase
                 .from('users')
-                .upsert(updates, { onConflict: 'id' })
+                .update({ role: selectedRole })
+                .eq('id', user.id)
 
-            if (error) {
-                console.error("Supabase error:", error)
-                alert("Error updating role: " + error.message)
+            if (error) throw error
+
+            toast.success(`Welcome, ${selectedRole}!`)
+
+            // Redirect to appropriate dashboard
+            if (selectedRole === 'client') {
+                router.push('/client')
             } else {
-                // Redirect to login to force RBAC re-check
-                router.push("/login")
+                router.push('/freelancer')
             }
-        } catch (e) {
-            console.error(e)
-            alert("An unexpected error occurred.")
+
+        } catch (error: any) {
+            console.error('Error updating role:', error)
+            toast.error("Failed to update role. Please try again.")
         } finally {
             setLoading(false)
         }
@@ -65,46 +57,71 @@ export default function OnboardingPage() {
 
     return (
         <AuthCard
-            title="Choose Your Path"
-            subtitle="How do you want to use LFM?"
+            title="Select Your Role"
+            subtitle="How do you plan to use LFM?"
+            className="max-w-4xl" // Wider card for the two options
         >
-            <div className="space-y-4">
-                <button
-                    onClick={() => handleRoleSelection('freelancer')}
-                    disabled={loading}
-                    className="w-full group relative flex items-start gap-4 rounded-lg border border-gray-200 p-4 transition-all hover:border-lebanon-green hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-lebanon-green focus:ring-offset-2 disabled:opacity-50"
-                >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-lebanon-green group-hover:bg-lebanon-green group-hover:text-white transition-colors">
-                        <Briefcase className="h-5 w-5" />
-                    </div>
-                    <div className="text-left">
-                        <h3 className="text-sm font-semibold text-gray-900">I am a Freelancer</h3>
-                        <p className="mt-1 text-xs text-gray-500">
-                            Create your profile, showcase your services, and start earning money.
-                        </p>
-                    </div>
-                </button>
-
-                <button
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
+                {/* Client Card */}
+                <div
+                    className={`relative rounded-xl border-2 p-6 cursor-pointer transition-all duration-300 hover:shadow-md ${selectedRole === 'client'
+                        ? 'border-lebanon-green bg-green-50 ring-1 ring-lebanon-green'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
                     onClick={() => handleRoleSelection('client')}
-                    disabled={loading}
-                    className="w-full group relative flex items-start gap-4 rounded-lg border border-gray-200 p-4 transition-all hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
                 >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                        <User className="h-5 w-5" />
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        <div className={`p-4 rounded-full transition-colors ${selectedRole === 'client' ? 'bg-green-100' : 'bg-gray-100'}`}>
+                            <Briefcase className={`h-8 w-8 ${selectedRole === 'client' ? 'text-lebanon-green' : 'text-gray-500'}`} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900">Client</h3>
+                            <p className="text-sm text-gray-500 mt-1">I want to hire freelancers</p>
+                        </div>
+                        {selectedRole === 'client' && (
+                            <div className="absolute top-3 right-3 text-lebanon-green animate-in zoom-in duration-200">
+                                <CheckCircle className="h-5 w-5" />
+                            </div>
+                        )}
                     </div>
-                    <div className="text-left">
-                        <h3 className="text-sm font-semibold text-gray-900">I am a Client</h3>
-                        <p className="mt-1 text-xs text-gray-500">
-                            Find talent, post jobs, and get work done quickly and securely.
-                        </p>
+                </div>
+
+                {/* Freelancer Card */}
+                <div
+                    className={`relative rounded-xl border-2 p-6 cursor-pointer transition-all duration-300 hover:shadow-md ${selectedRole === 'freelancer'
+                        ? 'border-lebanon-red bg-red-50 ring-1 ring-lebanon-red'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                    onClick={() => handleRoleSelection('freelancer')}
+                >
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        <div className={`p-4 rounded-full transition-colors ${selectedRole === 'freelancer' ? 'bg-red-100' : 'bg-gray-100'}`}>
+                            <User className={`h-8 w-8 ${selectedRole === 'freelancer' ? 'text-lebanon-red' : 'text-gray-500'}`} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900">Freelancer</h3>
+                            <p className="text-sm text-gray-500 mt-1">I want to offer services</p>
+                        </div>
+                        {selectedRole === 'freelancer' && (
+                            <div className="absolute top-3 right-3 text-lebanon-red animate-in zoom-in duration-200">
+                                <CheckCircle className="h-5 w-5" />
+                            </div>
+                        )}
                     </div>
-                </button>
+                </div>
             </div>
 
-            <p className="mt-6 text-center text-xs text-gray-500">
-                You can change this later from your account settings.
-            </p>
+            <div className="mt-8">
+                <Button
+                    size="lg"
+                    className="w-full bg-lebanon-green hover:bg-green-700 font-semibold"
+                    disabled={!selectedRole || loading}
+                    onClick={handleContinue}
+                    loading={loading}
+                >
+                    {loading ? 'Setting up Profile...' : 'Continue'}
+                </Button>
+            </div>
         </AuthCard>
     )
 }

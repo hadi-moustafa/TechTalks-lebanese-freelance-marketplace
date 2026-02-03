@@ -13,7 +13,9 @@ class EmailService {
   constructor() {
     // Validate environment variables
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      throw new Error('Missing SMTP configuration in environment variables');
+      // Don't crash immediately if env vars are missing, just warn, but basic init fails
+      // Changed to console.warn to prevent build crash if env is missing during build
+      console.warn('Missing SMTP configuration in environment variables');
     }
 
     // Create SMTP transporter
@@ -66,7 +68,7 @@ class EmailService {
     role: string
   ): Promise<{ success: boolean; error?: string }> {
     const html = this.getPasswordChangeTemplate(username, role);
-    
+
     return this.sendEmail({
       to: email,
       subject: '🔒 Your Password Has Been Changed - LFM Platform',
@@ -83,7 +85,7 @@ class EmailService {
     verificationCode: string
   ): Promise<{ success: boolean; error?: string }> {
     const html = this.getVerificationCodeTemplate(username, verificationCode);
-    
+
     return this.sendEmail({
       to: email,
       subject: '🔐 Verify Your Password Change - LFM Platform',
