@@ -1,12 +1,40 @@
+
 'use client';
 
-import { useState } from 'react';
-import { Moon, Globe, Camera, LogOut, Briefcase } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Moon, Globe, LogOut, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
+import UsernameChangeInput from '@/components/profile/UsernameChangeInput';
+import UsernameService from '@/services/usernameService';
+import PasswordChangeInput from '@/components/profile/PasswordChangeInput';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function FreelancerProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
+    const [currentUsername, setCurrentUsername] = useState("freelancer_pro");
+    const [isLoadingUsername, setIsLoadingUsername] = useState(true);
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        router.push('/login');
+    };
+
+    // Fetch username from database when component mounts
+    useEffect(() => {
+        async function fetchUsername() {
+            setIsLoadingUsername(true);
+            const username = await UsernameService.getUsername("196dc23e-cf57-4964-ac41-a398b8faeb81");
+            if (username) {
+                setCurrentUsername(username);
+            }
+            setIsLoadingUsername(false);
+        }
+        fetchUsername();
+    }, []);
 
     return (
         <div className="relative">
@@ -21,15 +49,16 @@ export default function FreelancerProfileMenu() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-lira-green-1k p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-lira-green-1k p-4 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
                         <div className="relative group cursor-pointer">
-                            <div className="w-16 h-16 rounded-full bg-lira-yellow-10k flex items-center justify-center text-yellow-700 overflow-hidden">
-                                <Briefcase size={32} />
-                            </div>
-                            <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Camera className="text-white" size={20} />
-                            </div>
+                            <ProfilePictureUpload
+                                userId="196dc23e-cf57-4964-ac41-a398b8faeb81"
+                                currentPictureUrl={null}
+                                userName="Freelancer User"
+                                bgColor="bg-lira-yellow-10k"
+                                iconColor="text-yellow-700"
+                            />
                         </div>
                         <div>
                             <h3 className="font-bold text-lg text-lira-text">Freelancer User</h3>
@@ -38,6 +67,7 @@ export default function FreelancerProfileMenu() {
                     </div>
 
                     <div className="space-y-4">
+<<<<<<< HEAD
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Username</label>
                             <input
@@ -55,6 +85,17 @@ export default function FreelancerProfileMenu() {
                                 placeholder="New password"
                             />
                             <p className="text-xs text-orange-500">Email confirmation required</p>
+=======
+                        <UsernameChangeInput
+                            userId="196dc23e-cf57-4964-ac41-a398b8faeb81"
+                            currentUsername={currentUsername}
+                            onUpdate={(newUsername) => setCurrentUsername(newUsername)}
+                        />
+
+                        <div className="pt-4 border-t border-gray-100">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Change Password</h4>
+                            <PasswordChangeInput userId="196dc23e-cf57-4964-ac41-a398b8faeb81" />
+>>>>>>> origin/main
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
@@ -79,10 +120,14 @@ export default function FreelancerProfileMenu() {
                             <Button
                                 variant="ghost"
                                 className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+<<<<<<< HEAD
                                 onClick={async () => {
                                     await fetch('/api/auth/signout', { method: 'POST' })
                                     window.location.href = '/login'
                                 }}
+=======
+                                onClick={handleSignOut}
+>>>>>>> origin/main
                             >
                                 <LogOut size={18} className="mr-2" />
                                 Sign Out

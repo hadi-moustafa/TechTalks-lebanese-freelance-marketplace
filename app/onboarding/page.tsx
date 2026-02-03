@@ -65,8 +65,8 @@ export default function OnboardingPage() {
                 {/* Client Card */}
                 <div
                     className={`relative rounded-xl border-2 p-6 cursor-pointer transition-all duration-300 hover:shadow-md ${selectedRole === 'client'
-                            ? 'border-lebanon-green bg-green-50 ring-1 ring-lebanon-green'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        ? 'border-lebanon-green bg-green-50 ring-1 ring-lebanon-green'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                     onClick={() => handleRoleSelection('client')}
                 >
@@ -89,8 +89,8 @@ export default function OnboardingPage() {
                 {/* Freelancer Card */}
                 <div
                     className={`relative rounded-xl border-2 p-6 cursor-pointer transition-all duration-300 hover:shadow-md ${selectedRole === 'freelancer'
-                            ? 'border-lebanon-red bg-red-50 ring-1 ring-lebanon-red'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        ? 'border-lebanon-red bg-red-50 ring-1 ring-lebanon-red'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                     onClick={() => handleRoleSelection('freelancer')}
                 >
