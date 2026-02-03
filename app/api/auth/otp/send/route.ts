@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { sendEmail } from '@/services/emailService';
+import { emailService } from '@/services/emailService';
 import otpGenerator from 'otp-generator';
 
 export async function POST(req: Request) {
@@ -39,11 +39,11 @@ export async function POST(req: Request) {
         }
 
         // Send Email
-        const emailResult = await sendEmail(
-            email,
-            'Your LFM Verification Code',
-            `<p>Your verification code is: <strong>${otp}</strong></p><p>It expires in 10 minutes.</p>`
-        );
+        const emailResult = await emailService.sendEmail({
+            to: email,
+            subject: 'Your LFM Verification Code',
+            html: `<p>Your verification code is: <strong>${otp}</strong></p><p>It expires in 10 minutes.</p>`
+        });
 
         if (!emailResult.success) {
             return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
