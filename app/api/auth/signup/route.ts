@@ -12,10 +12,15 @@ export async function POST(req: Request) {
         }
 
         // 1. Verify OTP using Anon Client (RPC)
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+        if (!supabaseUrl || !supabaseKey) {
+            console.error("Missing Supabase Env keys");
+            return NextResponse.json({ error: 'Server Configuration Error' }, { status: 500 });
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
         const { data: isValid, error: otpError } = await supabase.rpc('verify_otp', {
             p_email: email,

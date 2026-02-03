@@ -36,11 +36,31 @@ export async function GET(request: NextRequest) {
 
         if (!error && user) {
             // SYNC USER TO PUBLIC TABLE
-            const { data: existingUser } = await supabase
+            // 1. Check by ID first
+            let { data: existingUser } = await supabase
                 .from('users')
-                .select('role')
+                .select('*')
                 .eq('id', user.id)
                 .single();
+
+            // 2. If not found by ID, check by Email (to link accounts or handle pre-filled data)
+            if (!existingUser && user.email) {
+                const { data: userByEmail } = await supabase
+                    .from('users')
+                    .select('*')
+                    .ilike('email', user.email)
+                    .single();
+
+                if (userByEmail) {
+                    existingUser = userByEmail;
+                    // Optional: If we found them by email but IDs differ, we might want to update the ID? 
+                    // Supabase Auth ID cannot be easily changed in public table if it's a PK.
+                    // Assuming 'users.id' is a FK to auth.users.id.
+                    // If they are different, it means the public.users row is "orphaned" or from a different auth provider.
+                    // We should ideally update the ID to match the new Auth ID if possible, OR just trust the role.
+                    // For LFM, let's assume valid linking if email matches.
+                }
+            }
 
             if (!existingUser) {
                 // Create public user record
@@ -48,7 +68,10 @@ export async function GET(request: NextRequest) {
                 const username = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0];
                 const avatar = user.user_metadata?.avatar_url;
 
-                await supabase.from('users').insert({
+                // Use admin client to bypass any RLS on insert if needed, though server client should have access?
+                // No, standard server client is user-context (which is the new user). RLS MUST allow 'insert' for authenticated users.
+
+                const { error: insertError } = await supabase.from('users').insert({
                     id: user.id,
                     email: email,
                     username: username,
@@ -56,6 +79,11 @@ export async function GET(request: NextRequest) {
                     password_hash: 'oauth_provider_placeholder',
                     role: null
                 });
+
+                if (insertError) {
+                    console.error("Error creating user in callback:", insertError);
+                    return NextResponse.redirect(`${origin}/auth/auth-code-error?error=creation_failed`);
+                }
 
                 // Redirect to onboarding for new users
                 return NextResponse.redirect(`${origin}/onboarding`);
