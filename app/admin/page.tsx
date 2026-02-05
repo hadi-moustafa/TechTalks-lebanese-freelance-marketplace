@@ -1,6 +1,5 @@
 import AdminProfileMenu from './_components/AdminProfileMenu';
-import PriceOverrideCard from './_components/PriceOverrideCard';
-import ServiceModerationQueue from './_components/ServiceModerationQueue';
+import ServiceApproval from './_components/ServiceApproval';
 
 export default function AdminLandingPage() {
     return (
@@ -10,27 +9,19 @@ export default function AdminLandingPage() {
 
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
-                <header className="flex justify-between items-center mb-10">
+                <header className="flex justify-between items-center mb-16">
                     <div>
                         <h1 className="text-3xl font-extrabold text-lira-text tracking-tight">
-                            Dashboard
+                            Admin Dashboard
                         </h1>
-                        <p className="text-gray-500 mt-1">Welcome back, Admin</p>
+                        <p className="text-gray-500 mt-1">Manage platform services</p>
                     </div>
                     <AdminProfileMenu />
                 </header>
 
-                {/* Main Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-200px)] min-h-[600px]">
-                    {/* Left Column: Price Override */}
-                    <section className="lg:col-span-1 h-full">
-                        <PriceOverrideCard />
-                    </section>
-
-                    {/* Right Column: Moderation Queue */}
-                    <section className="lg:col-span-2 h-full">
-                        <ServiceModerationQueue />
-                    </section>
+                {/* Main Content - Centered Approval Box */}
+                <div className="flex justify-center items-start min-h-[600px] pb-12">
+                    <ServiceApproval />
                 </div>
             </div>
         </div>
