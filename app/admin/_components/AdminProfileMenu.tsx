@@ -20,13 +20,18 @@ export default function AdminProfileMenu() {
     const handleSignOut = async () => {
         try {
             console.log("Signout clicked");
+            // Clear client-side session first
+            const { error } = await supabase.auth.signOut();
+            if (error) console.error("Supabase client signout error:", error);
+
+            // Clear server-side cookies
             await fetch('/api/auth/signout', { method: 'POST', cache: 'no-store' });
-            console.log("Signout API called. Refreshing...");
+
+            console.log("Signout API called. Redirecting...");
             router.refresh();
-            router.replace('/login');
+            window.location.href = '/login'; // Force full reload to ensure clean state
         } catch (error) {
             console.error("Signout failed:", error);
-            // Fallback
             window.location.href = '/login';
         }
     };
