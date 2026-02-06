@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Coffee, Landmark, User, Menu } from 'lucide-react';
+import { Coffee, Landmark, User, Menu, Briefcase, Plus } from 'lucide-react';
 import { useState } from 'react';
 import FreelancerProfileMenu from './FreelancerProfileMenu';
 
@@ -20,10 +20,17 @@ export default function FreelancerNavbar() {
         },
         {
             name: 'Create Service',
-            href: '/freelancer/create-service',
-            icon: Coffee,
+            href: '/freelancer/services/create',
+            icon: Plus,
             description: 'Pour a new Gig',
-            color: 'text-lira-pink-5k'
+            color: 'text-lira-text'
+        },
+        {
+            name: 'My Services',
+            href: '/freelancer/services',
+            icon: Briefcase,
+            description: 'view services',
+            color: 'text-lira-text'
         }
     ];
 
@@ -66,7 +73,7 @@ export default function FreelancerNavbar() {
                                         <span className={`text-sm font-bold ${isActive ? 'text-gray-900' : 'text-gray-600'}`}>
                                             {item.name}
                                         </span>
-                                        <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 group-hover:text-lira-green-1k transition-colors">
+                                        <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 group-hover:text-lira-green-1k transition-colors ">
                                             {item.description}
                                         </span>
                                     </div>
