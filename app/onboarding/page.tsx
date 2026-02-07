@@ -22,23 +22,25 @@ export default function OnboardingPage() {
 
         setLoading(true)
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            // Call API to update role securely
+            const response = await fetch('/api/onboarding/update-role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ role: selectedRole }),
+            });
 
-            if (!user) {
-                toast.error("User not authenticated")
-                router.push('/login')
-                return
+            const result = await response.json();
+
+            if (!response.ok || result.error) {
+                throw new Error(result.error || 'Failed to update role');
             }
 
-            // Update role in public.users
-            const { error } = await supabase
-                .from('users')
-                .update({ role: selectedRole })
-                .eq('id', user.id)
-
-            if (error) throw error
-
             toast.success(`Welcome, ${selectedRole}!`)
+
+            // Refresh router to update session claims/middleware if needed
+            router.refresh();
 
             // Redirect to appropriate dashboard
             if (selectedRole === 'client') {
@@ -49,7 +51,7 @@ export default function OnboardingPage() {
 
         } catch (error: any) {
             console.error('Error updating role:', error)
-            toast.error("Failed to update role. Please try again.")
+            toast.error(error.message || "Failed to update role. Please try again.")
         } finally {
             setLoading(false)
         }
