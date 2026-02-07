@@ -1,15 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Check, X, Loader2, AlertCircle } from 'lucide-react';
+import { createBrowserClient } from '@supabase/ssr';
+import { Check, X, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+type ServiceImage = {
+    id: string;
+    image_url: string;
+    is_primary: boolean;
+};
 
 type Service = {
     id: string;
@@ -26,6 +32,7 @@ type Service = {
     categories?: {
         name: string;
     };
+    service_images?: ServiceImage[];
 };
 
 export default function ServiceApproval() {
@@ -33,27 +40,37 @@ export default function ServiceApproval() {
     const [loading, setLoading] = useState(true);
     const [rejectingId, setRejectingId] = useState<string | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     const fetchServices = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('services')
-            .select(`
-                *,
-                users:freelancer_id (username, email),
-                categories:category_id (name)
-            `)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false });
+        try {
+            // First, just fetch services without joins to test
+            const { data, error } = await supabase
+                .from('services')
+                .select(`
+                    *,
+                    categories:category_id (name),
+                    service_images (id, image_url, is_primary)
+                `)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
 
-        if (error) {
+            if (error) {
+                console.error('Supabase error:', error);
+                toast.error(`Failed to load services: ${error.message}`);
+                setServices([]);
+            } else {
+                console.log('Fetched pending services:', data);
+                setServices(data || []);
+            }
+        } catch (error) {
             console.error('Error fetching services:', error);
             toast.error('Failed to load services');
-        } else {
-            console.log('Fetched services:', data);
-            setServices(data || []);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     useEffect(() => {
@@ -61,17 +78,26 @@ export default function ServiceApproval() {
     }, []);
 
     const handleApprove = async (id: string) => {
-        const { error } = await supabase
-            .from('services')
-            .update({ status: 'approved' })
-            .eq('id', id);
+        setActionLoading(id);
+        try {
+            const { error } = await supabase
+                .from('services')
+                .update({ status: 'approved' })
+                .eq('id', id);
 
-        if (error) {
-            toast.error('Failed to approve service');
-            console.error(error);
-        } else {
+            if (error) {
+                console.error('Approve error:', error);
+                throw error;
+            }
+
             toast.success('Service approved');
             setServices(services.filter(s => s.id !== id));
+        } catch (error: unknown) {
+            console.error(error);
+            const message = error instanceof Error ? error.message : 'Failed to approve';
+            toast.error(message);
+        } finally {
+            setActionLoading(null);
         }
     };
 
@@ -81,23 +107,37 @@ export default function ServiceApproval() {
             return;
         }
 
-        const { error } = await supabase
-            .from('services')
-            .update({
-                status: 'rejected',
-                rejection_reason: rejectionReason
-            })
-            .eq('id', id);
+        setActionLoading(id);
+        try {
+            const { error } = await supabase
+                .from('services')
+                .update({ 
+                    status: 'rejected', 
+                    rejection_reason: rejectionReason
+                })
+                .eq('id', id);
 
-        if (error) {
-            toast.error('Failed to reject service');
-            console.error(error);
-        } else {
+            if (error) {
+                console.error('Reject error:', error);
+                throw error;
+            }
+
             toast.success('Service rejected');
             setServices(services.filter(s => s.id !== id));
             setRejectingId(null);
             setRejectionReason('');
+        } catch (error: unknown) {
+            console.error(error);
+            const message = error instanceof Error ? error.message : 'Failed to reject';
+            toast.error(message);
+        } finally {
+            setActionLoading(null);
         }
+    };
+
+    const getPrimaryImage = (service: Service) => {
+        const primary = service.service_images?.find(img => img.is_primary);
+        return primary?.image_url || service.service_images?.[0]?.image_url;
     };
 
     if (loading) {
@@ -137,55 +177,98 @@ export default function ServiceApproval() {
                         {services.map((service) => (
                             <div
                                 key={service.id}
-                                className="bg-white border border-gray-100 rounded-xl p-5 hover:shadow-md transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
+                                className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-all duration-200"
                             >
-                                <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 uppercase tracking-wide">
-                                                {service.categories?.name || 'Uncategorized'}
-                                            </span>
-                                            <span className="text-xs text-gray-400">
-                                                {new Date(service.created_at).toLocaleDateString()}
-                                            </span>
+                                <div className="p-5">
+                                    <div className="flex gap-4">
+                                        {getPrimaryImage(service) && (
+                                            <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                                <img
+                                                    src={getPrimaryImage(service)}
+                                                    alt={service.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 uppercase tracking-wide">
+                                                    {service.categories?.name || 'Uncategorized'}
+                                                </span>
+                                                <span className="text-xs text-gray-400">
+                                                    {new Date(service.created_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-lg font-bold text-gray-900 mb-1 truncate">{service.title}</h3>
+                                            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                                                <span className="font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                                                    ${service.price}
+                                                </span>
+                                            </div>
+                                            
+                                            <button
+                                                onClick={() => setExpandedId(expandedId === service.id ? null : service.id)}
+                                                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                            >
+                                                {expandedId === service.id ? (
+                                                    <>Hide details <ChevronUp size={16} /></>
+                                                ) : (
+                                                    <>View details <ChevronDown size={16} /></>
+                                                )}
+                                            </button>
                                         </div>
-                                        <h3 className="text-lg font-bold text-gray-900 mb-1">{service.title}</h3>
-                                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                                            <span className="font-medium text-gray-900">
-                                                {service.users?.username || 'Unknown User'}
-                                            </span>
-                                            <span>•</span>
-                                            <span className="font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded">
-                                                ${service.price}
-                                            </span>
+
+                                        <div className="flex items-start gap-2 flex-shrink-0">
+                                            {rejectingId !== service.id && (
+                                                <>
+                                                    <button
+                                                        onClick={() => setRejectingId(service.id)}
+                                                        disabled={actionLoading === service.id}
+                                                        className="p-3 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors disabled:opacity-50"
+                                                        title="Reject"
+                                                    >
+                                                        <X size={24} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleApprove(service.id)}
+                                                        disabled={actionLoading === service.id}
+                                                        className="p-3 text-green-500 hover:bg-green-50 hover:text-green-600 rounded-xl transition-colors disabled:opacity-50"
+                                                        title="Approve"
+                                                    >
+                                                        {actionLoading === service.id ? (
+                                                            <Loader2 className="animate-spin" size={24} />
+                                                        ) : (
+                                                            <Check size={24} />
+                                                        )}
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
-                                        <p className="text-gray-600 text-sm line-clamp-2">{service.description}</p>
                                     </div>
 
-                                    <div className="flex items-center gap-2 ml-4">
-                                        {rejectingId !== service.id && (
-                                            <>
-                                                <button
-                                                    onClick={() => setRejectingId(service.id)}
-                                                    className="p-3 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"
-                                                    title="Reject"
-                                                >
-                                                    <X size={24} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleApprove(service.id)}
-                                                    className="p-3 text-green-500 hover:bg-green-50 hover:text-green-600 rounded-xl transition-colors"
-                                                    title="Approve"
-                                                >
-                                                    <Check size={24} />
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
+                                    {expandedId === service.id && (
+                                        <div className="mt-4 pt-4 border-t border-gray-100">
+                                            <p className="text-gray-600 text-sm mb-4">{service.description}</p>
+                                            
+                                            {service.service_images && service.service_images.length > 1 && (
+                                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                                    {service.service_images.map((img) => (
+                                                        <img
+                                                            key={img.id}
+                                                            src={img.image_url}
+                                                            alt="Service"
+                                                            className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {rejectingId === service.id && (
-                                    <div className="mt-4 pt-4 border-t border-gray-100 bg-red-50/50 -mb-2 -mx-2 p-4 rounded-b-lg animate-in slide-in-from-top-2">
+                                    <div className="bg-red-50 border-t border-red-100 p-4">
                                         <label className="text-sm font-semibold text-red-800 mb-2 block">
                                             Reason for rejection:
                                         </label>
@@ -211,9 +294,14 @@ export default function ServiceApproval() {
                                             <Button
                                                 size="sm"
                                                 onClick={() => handleReject(service.id)}
+                                                disabled={actionLoading === service.id}
                                                 className="bg-red-600 hover:bg-red-700 text-white border-0"
                                             >
-                                                Confirm Rejection
+                                                {actionLoading === service.id ? (
+                                                    <Loader2 className="animate-spin" size={16} />
+                                                ) : (
+                                                    'Confirm Rejection'
+                                                )}
                                             </Button>
                                         </div>
                                     </div>
