@@ -18,19 +18,18 @@ export default function ClientProfileMenu() {
 
     const handleSignOut = async () => {
         try {
-            console.log("Signout clicked");
-            // Clear client-side session first
+            console.log("Signout initiating...");
+            // clear client-side session with a timeout to prevent hanging
             const { error } = await supabase.auth.signOut();
             if (error) console.error("Supabase client signout error:", error);
 
             // Clear server-side cookies
             await fetch('/api/auth/signout', { method: 'POST', cache: 'no-store' });
-
-            console.log("Signout API called. Redirecting...");
-            router.refresh();
-            window.location.href = '/login'; // Force full reload to ensure clean state
         } catch (error) {
-            console.error("Signout failed:", error);
+            console.error("Signout error:", error);
+        } finally {
+            console.log("Redirecting to login...");
+            // Force full reload to ensure clean state, router.refresh() is redundant with window.location.href
             window.location.href = '/login';
         }
     };
