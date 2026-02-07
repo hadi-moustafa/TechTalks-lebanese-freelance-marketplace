@@ -10,7 +10,7 @@ import UsernameChangeInput from '@/components/profile/UsernameChangeInput';
 import UsernameService from '@/services/usernameService';
 import PasswordChangeInput from '@/components/profile/PasswordChangeInput';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/app/supabase/client';
 
 export default function FreelancerProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
@@ -21,10 +21,16 @@ export default function FreelancerProfileMenu() {
     const handleSignOut = async () => {
         try {
             console.log("Signout clicked");
+            // Clear client-side session first
+            const { error } = await supabase.auth.signOut();
+            if (error) console.error("Supabase client signout error:", error);
+
+            // Clear server-side cookies
             await fetch('/api/auth/signout', { method: 'POST', cache: 'no-store' });
-            console.log("Signout API called. Refreshing...");
+
+            console.log("Signout API called. Redirecting...");
             router.refresh();
-            router.replace('/login');
+            window.location.href = '/login'; // Force full reload to ensure clean state
         } catch (error) {
             console.error("Signout failed:", error);
             window.location.href = '/login';
