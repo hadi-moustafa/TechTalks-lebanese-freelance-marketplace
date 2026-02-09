@@ -47,7 +47,10 @@ export async function POST(req: NextRequest) {
         const admin = supabaseAdmin();
         const { error: updateError } = await admin
             .from('users')
-            .update({ role: role })
+            .update({
+                role: role,
+                subscription_tier: 'free' // Ensure this is set for new users
+            })
             .eq('id', user.id);
 
         if (updateError) {

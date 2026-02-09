@@ -92,7 +92,8 @@ export async function POST(req: Request) {
             username: userUser.user_metadata?.full_name || userUser.user_metadata?.name || email.split('@')[0],
             profile_pic: userUser.user_metadata?.avatar_url,
             password_hash: 'oauth_provider_placeholder',
-            role: null
+            role: null,
+            subscription_tier: 'free'
         });
 
         if (insertError) {
