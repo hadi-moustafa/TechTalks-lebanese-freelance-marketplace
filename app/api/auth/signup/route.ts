@@ -107,7 +107,8 @@ export async function POST(req: Request) {
                     email: email,
                     username: username,
                     password_hash: hashedPassword, // Added field
-                    role: null
+                    role: null,
+                    subscription_tier: 'free'
                 });
 
             if (publicInsertError) {

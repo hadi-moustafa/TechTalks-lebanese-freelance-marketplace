@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
                     username: username,
                     profile_pic: avatar,
                     password_hash: 'oauth_provider_placeholder',
-                    role: null
+                    role: null,
+                    subscription_tier: 'free'
                 });
 
                 if (insertError) {

@@ -68,8 +68,8 @@ export async function middleware(req: NextRequest) {
     // If user is missing, they are likely a new OAuth user who's record hasn't been created yet.
     // We allow them to Onboarding to create their profile/role.
 
-    // If not already on onboarding, send them there
-    if (!path.startsWith("/onboarding")) {
+    // If not already on onboarding or calling onboarding API, send them there
+    if (!path.startsWith("/onboarding") && !path.startsWith("/api/onboarding")) {
       return NextResponse.redirect(new URL("/onboarding", req.url));
     }
     // Allow access to onboarding
