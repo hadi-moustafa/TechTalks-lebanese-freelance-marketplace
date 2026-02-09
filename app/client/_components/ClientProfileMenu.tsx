@@ -12,8 +12,10 @@ import { supabase } from '@/app/supabase/client';
 
 export default function ClientProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
-    const [currentUsername, setCurrentUsername] = useState("happy_client");
-    const [isLoadingUsername, setIsLoadingUsername] = useState(true);
+    const [user, setUser] = useState<any>(null);
+    const [currentUsername, setCurrentUsername] = useState("Client User");
+    const [profilePic, setProfilePic] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
     const handleSignOut = async () => {
@@ -34,18 +36,43 @@ export default function ClientProfileMenu() {
         }
     };
 
-    // Fetch username from database when component mounts
+    // Fetch user data when component mounts
     useEffect(() => {
-        async function fetchUsername() {
-            setIsLoadingUsername(true);
-            const username = await UsernameService.getUsername("39326262-b9a0-4c79-b48e-dc92ef87791e");
-            if (username) {
-                setCurrentUsername(username);
+        async function fetchUserData() {
+            setIsLoading(true);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    setUser(user);
+
+                    // Fetch profile details
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('username, profile_pic')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (profile) {
+                        if (profile.username) setCurrentUsername(profile.username);
+                        setProfilePic(profile.profile_pic);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoadingUsername(false);
         }
-        fetchUsername();
+        fetchUserData();
     }, []);
+
+    if (isLoading) {
+        return (
+            <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+        );
+    }
+
+    if (!user) return null;
 
     return (
         <div className="relative">
@@ -53,10 +80,14 @@ export default function ClientProfileMenu() {
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 p-2 rounded-full bg-white/50 hover:bg-white/80 transition-colors border border-lira-pink-5k cursor-pointer"
             >
-                <div className="w-10 h-10 rounded-full bg-lira-pink-5k flex items-center justify-center text-pink-700">
-                    <ShoppingBag size={20} />
+                <div className="w-10 h-10 rounded-full bg-lira-pink-5k flex items-center justify-center text-pink-700 overflow-hidden">
+                    {profilePic ? (
+                        <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                        <ShoppingBag size={20} />
+                    )}
                 </div>
-                <span className="hidden md:block font-medium text-lira-text">Client</span>
+                <span className="hidden md:block font-medium text-lira-text">{currentUsername}</span>
             </button>
 
             {isOpen && (
@@ -64,29 +95,30 @@ export default function ClientProfileMenu() {
                     <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
                         <div className="relative group cursor-pointer">
                             <ProfilePictureUpload
-                                userId="39326262-b9a0-4c79-b48e-dc92ef87791e"
-                                currentPictureUrl={null}
-                                userName="Client User"
+                                userId={user.id}
+                                currentPictureUrl={profilePic}
+                                userName={currentUsername}
+                                onUpdate={(url) => setProfilePic(url)}
                                 bgColor="bg-lira-pink-5k"
                                 iconColor="text-pink-700"
                             />
                         </div>
                         <div>
-                            <h3 className="font-bold text-lg text-lira-text">Client User</h3>
-                            <p className="text-sm text-gray-500">client@lfm.com</p>
+                            <h3 className="font-bold text-lg text-lira-text">{currentUsername}</h3>
+                            <p className="text-sm text-gray-500">{user.email}</p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
                         <UsernameChangeInput
-                            userId="39326262-b9a0-4c79-b48e-dc92ef87791e"
+                            userId={user.id}
                             currentUsername={currentUsername}
                             onUpdate={(newUsername) => setCurrentUsername(newUsername)}
                         />
 
                         <div className="pt-4 border-t border-gray-100">
                             <h4 className="text-sm font-semibold text-gray-700 mb-3">Change Password</h4>
-                            <PasswordChangeInput userId="39326262-b9a0-4c79-b48e-dc92ef87791e" />
+                            <PasswordChangeInput userId={user.id} />
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer">

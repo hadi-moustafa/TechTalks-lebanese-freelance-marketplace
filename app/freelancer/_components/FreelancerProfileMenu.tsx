@@ -14,8 +14,10 @@ import { supabase } from '@/app/supabase/client';
 
 export default function FreelancerProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
-    const [currentUsername, setCurrentUsername] = useState("freelancer_pro");
-    const [isLoadingUsername, setIsLoadingUsername] = useState(true);
+    const [user, setUser] = useState<any>(null);
+    const [currentUsername, setCurrentUsername] = useState("Freelancer User");
+    const [profilePic, setProfilePic] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
     const handleSignOut = async () => {
@@ -36,18 +38,43 @@ export default function FreelancerProfileMenu() {
         }
     };
 
-    // Fetch username from database when component mounts
+    // Fetch user data when component mounts
     useEffect(() => {
-        async function fetchUsername() {
-            setIsLoadingUsername(true);
-            const username = await UsernameService.getUsername("196dc23e-cf57-4964-ac41-a398b8faeb81");
-            if (username) {
-                setCurrentUsername(username);
+        async function fetchUserData() {
+            setIsLoading(true);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    setUser(user);
+
+                    // Fetch profile details
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('username, profile_pic')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (profile) {
+                        if (profile.username) setCurrentUsername(profile.username);
+                        setProfilePic(profile.profile_pic);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoadingUsername(false);
         }
-        fetchUsername();
+        fetchUserData();
     }, []);
+
+    if (isLoading) {
+        return (
+            <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+        );
+    }
+
+    if (!user) return null;
 
     return (
         <div className="relative">
@@ -55,48 +82,45 @@ export default function FreelancerProfileMenu() {
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 p-2 rounded-full bg-white/50 hover:bg-white/80 transition-colors border border-lira-pink-5k cursor-pointer"
             >
-                <div className="w-10 h-10 rounded-full bg-lira-yellow-10k flex items-center justify-center text-yellow-700">
-                    <Briefcase size={20} />
+                <div className="w-10 h-10 rounded-full bg-lira-yellow-10k flex items-center justify-center text-yellow-700 overflow-hidden">
+                    {profilePic ? (
+                        <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                        <Briefcase size={20} />
+                    )}
                 </div>
-                <span className="hidden md:block font-medium text-lira-text">Freelancer</span>
+                <span className="hidden md:block font-medium text-lira-text">{currentUsername}</span>
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-lira-green-1k p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-lg border border-lira-green-1k p-4 z-50 animate-in fade-in slide-in-from-top-2 max-h-[85vh] overflow-y-auto">
                     <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
                         <div className="relative group cursor-pointer">
                             <ProfilePictureUpload
-                                userId="196dc23e-cf57-4964-ac41-a398b8faeb81"
-                                currentPictureUrl={null}
-                                userName="Freelancer User"
+                                userId={user.id}
+                                currentPictureUrl={profilePic}
+                                userName={currentUsername}
+                                onUpdate={(url) => setProfilePic(url)}
                                 bgColor="bg-lira-yellow-10k"
                                 iconColor="text-yellow-700"
                             />
                         </div>
                         <div>
-                            <h3 className="font-bold text-lg text-lira-text">Freelancer User</h3>
-                            <p className="text-sm text-gray-500">freelancer@lfm.com</p>
+                            <h3 className="font-bold text-lg text-lira-text">{currentUsername}</h3>
+                            <p className="text-sm text-gray-500">{user.email}</p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Username</label>
-                            <input
-                                className="w-full pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
-                                placeholder="Change username"
-                                defaultValue="freelancer_pro"
-                            />
-                        </div>
+                        <UsernameChangeInput
+                            userId={user.id}
+                            currentUsername={currentUsername}
+                            onUpdate={(newUsername) => setCurrentUsername(newUsername)}
+                        />
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Password</label>
-                            <input
-                                type="password"
-                                className="w-full pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lebanon-green focus:border-lebanon-green focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
-                                placeholder="New password"
-                            />
-                            <p className="text-xs text-orange-500">Email confirmation required</p>
+                        <div className="pt-4 border-t border-gray-100">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Change Password</h4>
+                            <PasswordChangeInput userId={user.id} />
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
