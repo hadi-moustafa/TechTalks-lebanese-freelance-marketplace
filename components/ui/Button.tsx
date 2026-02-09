@@ -1,14 +1,10 @@
-import { ReactNode } from 'react'
+import { ButtonHTMLAttributes, ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 
-interface ButtonProps {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
-  type?: 'button' | 'submit' | 'reset'
   variant?: 'default' | 'social' | 'outline' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
-  className?: string
-  onClick?: () => void
-  disabled?: boolean
   loading?: boolean
 }
 
@@ -20,7 +16,8 @@ export function Button({
   className = '',
   onClick,
   disabled = false,
-  loading = false
+  loading = false,
+  ...props
 }: ButtonProps) {
   const baseStyles = 'font-medium transition-colors duration-200 flex items-center justify-center'
 
@@ -43,6 +40,7 @@ export function Button({
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className} ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
       onClick={onClick}
       disabled={disabled || loading}
+      {...props}
     >
       {loading ? (
         <>

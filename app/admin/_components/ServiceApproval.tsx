@@ -111,8 +111,8 @@ export default function ServiceApproval() {
         try {
             const { error } = await supabase
                 .from('services')
-                .update({ 
-                    status: 'rejected', 
+                .update({
+                    status: 'rejected',
                     rejection_reason: rejectionReason
                 })
                 .eq('id', id);
@@ -149,18 +149,18 @@ export default function ServiceApproval() {
     }
 
     return (
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-4xl mx-auto">
-            <div className="bg-gradient-to-r from-lira-text to-gray-800 p-6 text-white flex justify-between items-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
+            <div className="bg-gradient-to-r from-gray-800 to-gray-700 p-6 text-white flex justify-between items-center flex-shrink-0">
                 <div>
-                    <h2 className="text-2xl font-bold flex items-center gap-3">
-                        <AlertCircle className="text-yellow-400" />
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                        <AlertCircle className="text-yellow-400" size={24} />
                         Service Approval
                     </h2>
                     <p className="text-gray-300 text-sm mt-1">
-                        Review and manage pending service requests
+                        Review pending requests
                     </p>
                 </div>
-                <div className="bg-white/20 px-4 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm">
+                <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
                     {services.length} Pending
                 </div>
             </div>
@@ -206,7 +206,7 @@ export default function ServiceApproval() {
                                                     ${service.price}
                                                 </span>
                                             </div>
-                                            
+
                                             <button
                                                 onClick={() => setExpandedId(expandedId === service.id ? null : service.id)}
                                                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
@@ -250,7 +250,7 @@ export default function ServiceApproval() {
                                     {expandedId === service.id && (
                                         <div className="mt-4 pt-4 border-t border-gray-100">
                                             <p className="text-gray-600 text-sm mb-4">{service.description}</p>
-                                            
+
                                             {service.service_images && service.service_images.length > 1 && (
                                                 <div className="flex gap-2 overflow-x-auto pb-2">
                                                     {service.service_images.map((img) => (

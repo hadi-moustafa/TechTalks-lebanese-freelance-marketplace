@@ -13,8 +13,10 @@ import { supabase } from '@/app/supabase/client';
 
 export default function AdminProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
-    const [currentUsername, setCurrentUsername] = useState("admin_user");
-    const [isLoadingUsername, setIsLoadingUsername] = useState(true);
+    const [user, setUser] = useState<any>(null);
+    const [currentUsername, setCurrentUsername] = useState("Admin User");
+    const [profilePic, setProfilePic] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
     const handleSignOut = async () => {
@@ -36,18 +38,43 @@ export default function AdminProfileMenu() {
         }
     };
 
-    // Fetch username from database when component mounts
+    // Fetch user data when component mounts
     useEffect(() => {
-        async function fetchUsername() {
-            setIsLoadingUsername(true);
-            const username = await UsernameService.getUsername("e5c7a983-44e4-4b5b-98e0-e8329dc209f8");
-            if (username) {
-                setCurrentUsername(username);
+        async function fetchUserData() {
+            setIsLoading(true);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    setUser(user);
+
+                    // Fetch profile details
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('username, profile_pic')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (profile) {
+                        if (profile.username) setCurrentUsername(profile.username);
+                        setProfilePic(profile.profile_pic);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoadingUsername(false);
         }
-        fetchUsername();
+        fetchUserData();
     }, []);
+
+    if (isLoading) {
+        return (
+            <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+        );
+    }
+
+    if (!user) return null;
 
     return (
         <div className="relative">
@@ -55,40 +82,45 @@ export default function AdminProfileMenu() {
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 p-2 rounded-full bg-white/50 hover:bg-white/80 transition-colors border border-lira-pink-5k cursor-pointer"
             >
-                <div className="w-10 h-10 rounded-full bg-lira-blue-50k flex items-center justify-center text-lira-text">
-                    <User size={20} />
+                <div className="w-10 h-10 rounded-full bg-lira-blue-50k flex items-center justify-center text-lira-text overflow-hidden">
+                    {profilePic ? (
+                        <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                        <User size={20} />
+                    )}
                 </div>
-                <span className="hidden md:block font-medium text-lira-text">Admin</span>
+                <span className="hidden md:block font-medium text-lira-text">{currentUsername}</span>
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-lira-green-1k p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-lira-green-1k p-4 z-50 animate-in fade-in slide-in-from-top-2 max-h-[80vh] overflow-y-auto">
                     <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
                         <div className="relative group cursor-pointer">
                             <ProfilePictureUpload
-                                userId="e5c7a983-44e4-4b5b-98e0-e8329dc209f8"
-                                currentPictureUrl={null}
-                                userName="Admin User"
+                                userId={user.id}
+                                currentPictureUrl={profilePic}
+                                userName={currentUsername}
+                                onUpdate={(url) => setProfilePic(url)}
                                 bgColor="bg-lira-blue-50k"
                                 iconColor="text-lira-text"
                             />
                         </div>
                         <div>
-                            <h3 className="font-bold text-lg text-lira-text">Admin User</h3>
-                            <p className="text-sm text-gray-500">admin@lfm.com</p>
+                            <h3 className="font-bold text-lg text-lira-text">{currentUsername}</h3>
+                            <p className="text-sm text-gray-500">{user.email}</p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
                         <UsernameChangeInput
-                            userId="e5c7a983-44e4-4b5b-98e0-e8329dc209f8"
+                            userId={user.id}
                             currentUsername={currentUsername}
                             onUpdate={(newUsername) => setCurrentUsername(newUsername)}
                         />
 
                         <div className="pt-4 border-t border-gray-100">
                             <h4 className="text-sm font-semibold text-gray-700 mb-3">Change Password</h4>
-                            <PasswordChangeInput userId="e5c7a983-44e4-4b5b-98e0-e8329dc209f8" />
+                            <PasswordChangeInput userId={user.id} />
                         </div>
 
                         <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer">

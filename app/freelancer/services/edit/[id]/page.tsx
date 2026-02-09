@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-import FreelancerNavbar from '../../../_components/FreelancerNavbar';
+
 import { Button } from '@/components/ui/Button';
-import { Upload, DollarSign, Tag, Type, FileText, Image as ImageIcon, X, Loader2, Check, ArrowLeft, Eye, Star, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
+import { Upload, DollarSign, Tag, Type, FileText, Image as ImageIcon, X, Loader2, Check, ArrowLeft, Eye, Star, AlertTriangle, Trash2, RefreshCw, HandCoins } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PriceOverrideService from '@/services/priceOverrideService';
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,6 +45,15 @@ type Service = {
     freelancer_id: string;
 };
 
+type OverrideRequest = {
+    id: string;
+    status: 'pending' | 'approved' | 'rejected';
+    requested_price: number;
+    reason: string;
+    admin_notes?: string;
+    created_at: string;
+};
+
 export default function EditServicePage() {
     const params = useParams();
     const router = useRouter();
@@ -59,6 +69,13 @@ export default function EditServicePage() {
     const [service, setService] = useState<Service | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+    // Price Override State
+    const [showOverrideModal, setShowOverrideModal] = useState(false);
+    const [overrideRequest, setOverrideRequest] = useState<OverrideRequest | null>(null);
+    const [overridePrice, setOverridePrice] = useState('');
+    const [overrideReason, setOverrideReason] = useState('');
+    const [submittingOverride, setSubmittingOverride] = useState(false);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -80,14 +97,21 @@ export default function EditServicePage() {
                 return;
             }
 
-            const [serviceRes, categoriesRes] = await Promise.all([
+            const [serviceRes, categoriesRes, overrideRes] = await Promise.all([
                 supabase
                     .from('services')
                     .select(`*, service_images (id, image_url, is_primary)`)
                     .eq('id', serviceId)
                     .eq('freelancer_id', user.id)
                     .single(),
-                supabase.from('categories').select('*')
+                supabase.from('categories').select('*'),
+                supabase
+                    .from('price_override_requests')
+                    .select('*')
+                    .eq('service_id', serviceId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle()
             ]);
 
             if (serviceRes.error) throw serviceRes.error;
@@ -109,6 +133,11 @@ export default function EditServicePage() {
             if (!categoriesRes.error && categoriesRes.data) {
                 setCategories(categoriesRes.data);
             }
+
+            if (overrideRes.data) {
+                setOverrideRequest(overrideRes.data as OverrideRequest);
+            }
+
         } catch (error) {
             console.error('Error fetching service:', error);
             toast.error('Failed to load service');
@@ -127,7 +156,7 @@ export default function EditServicePage() {
         if (!files) return;
 
         const newImgs: NewImage[] = [];
-        
+
         Array.from(files).forEach((file) => {
             if (!file.type.startsWith('image/')) {
                 toast.error(`File ${file.name} is not an image`);
@@ -157,7 +186,7 @@ export default function EditServicePage() {
     };
 
     const markExistingForDelete = (id: string) => {
-        setExistingImages(prev => prev.map(img => 
+        setExistingImages(prev => prev.map(img =>
             img.id === id ? { ...img, toDelete: !img.toDelete } : img
         ));
     };
@@ -322,25 +351,65 @@ export default function EditServicePage() {
         }
     };
 
+    const handleRequestOverride = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmittingOverride(true);
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                toast.error('You must be logged in');
+                return;
+            }
+
+            if (!service) return;
+
+            const requestedPriceNum = parseFloat(overridePrice);
+            if (isNaN(requestedPriceNum) || requestedPriceNum <= 0) {
+                toast.error('Please enter a valid price');
+                setSubmittingOverride(false);
+                return;
+            }
+
+            const result = await PriceOverrideService.createRequest(
+                serviceId,
+                user.id,
+                service.price,
+                requestedPriceNum,
+                overrideReason
+            );
+
+            if (result.success && result.data) {
+                setOverrideRequest(result.data as OverrideRequest);
+                setShowOverrideModal(false);
+                toast.success('Price override request submitted!');
+                setOverridePrice('');
+                setOverrideReason('');
+            } else {
+                toast.error('Failed to submit request: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error submitting override:', error);
+            toast.error('An unexpected error occurred');
+        } finally {
+            setSubmittingOverride(false);
+        }
+    };
+
     if (loading) {
         return (
-            <div className="min-h-screen bg-lebanese-pattern font-sans">
-                <FreelancerNavbar />
-                <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lira-green-1k"></div>
-                </div>
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lira-green-1k"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-lebanese-pattern font-sans">
-            <FreelancerNavbar />
-
-            <div className="max-w-5xl mx-auto px-4 py-12">
+        <div>
+            <div className="max-w-5xl mx-auto">
                 <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
                     {/* Header */}
-                    <div className={`p-8 text-white ${service?.status === 'rejected' ? 'bg-gradient-to-r from-red-500 to-red-700' : 'bg-gradient-to-r from-blue-500 to-blue-700'}`}>
+                    <div className={`p-8 text-white ${service?.status === 'rejected' ? 'bg-red-600' : 'bg-cedar-dark'}`}>
                         <div className="flex items-center justify-between">
                             <div>
                                 <button
@@ -361,13 +430,47 @@ export default function EditServicePage() {
                         </div>
                     </div>
 
+                    {/* Pending Override Request Alert */}
+                    {overrideRequest && overrideRequest.status === 'pending' && (
+                        <div className="mx-8 mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="text-yellow-600 flex-shrink-0 mt-0.5" size={20} />
+                                <div>
+                                    <h4 className="font-semibold text-yellow-800">Pending Price Override Request</h4>
+                                    <p className="text-yellow-700 mt-1">
+                                        You requested to change the price to <span className="font-bold">${overrideRequest.requested_price}</span>.
+                                        Please wait for admin approval.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Rejected Override Request Alert */}
+                    {overrideRequest && overrideRequest.status === 'rejected' && (
+                        <div className="mx-8 mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                            <div className="flex items-start gap-3">
+                                <X className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+                                <div>
+                                    <h4 className="font-semibold text-red-800">Price Override Request Rejected</h4>
+                                    <p className="text-red-700 mt-1">
+                                        Your request to change price to ${overrideRequest.requested_price} was rejected.
+                                        {overrideRequest.admin_notes && (
+                                            <span className="block mt-1 italic">Admin Note: "{overrideRequest.admin_notes}"</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Rejection Reason Alert */}
                     {service?.status === 'rejected' && service?.rejection_reason && (
                         <div className="mx-8 mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
                             <div className="flex items-start gap-3">
                                 <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
                                 <div>
-                                    <h4 className="font-semibold text-red-800">Rejection Reason</h4>
+                                    <h4 className="font-semibold text-red-800">Service Rejection Reason</h4>
                                     <p className="text-red-700 mt-1">{service.rejection_reason}</p>
                                 </div>
                             </div>
@@ -386,7 +489,7 @@ export default function EditServicePage() {
                                 name="title"
                                 value={formData.title}
                                 onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none transition-all"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none transition-all shadow-sm"
                                 required
                             />
                         </div>
@@ -402,7 +505,7 @@ export default function EditServicePage() {
                                     name="category_id"
                                     value={formData.category_id}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none bg-white"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none shadow-sm"
                                     required
                                 >
                                     <option value="">Select a category</option>
@@ -417,16 +520,31 @@ export default function EditServicePage() {
                                     <DollarSign size={18} className="text-lira-green-1k" />
                                     Price (USD) <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="number"
-                                    name="price"
-                                    value={formData.price}
-                                    onChange={handleChange}
-                                    min="1"
-                                    step="0.01"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none"
-                                    required
-                                />
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        name="price"
+                                        value={formData.price}
+                                        onChange={handleChange}
+                                        min="1"
+                                        step="0.01"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none shadow-sm"
+                                        required
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setShowOverrideModal(true)}
+                                        className="whitespace-nowrap flex items-center gap-2 text-lira-green-1k border-lira-green-1k hover:bg-lira-green-1k/10"
+                                        title="Request to override price limit"
+                                    >
+                                        <HandCoins size={16} />
+                                        Request Override
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    Current category price limit may apply. Request an override if needed.
+                                </p>
                             </div>
                         </div>
 
@@ -441,7 +559,7 @@ export default function EditServicePage() {
                                 value={formData.description}
                                 onChange={handleChange}
                                 rows={5}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none resize-none"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none resize-none shadow-sm"
                                 required
                             />
                         </div>
@@ -457,16 +575,15 @@ export default function EditServicePage() {
                                     {existingImages.map((image) => (
                                         <div
                                             key={image.id}
-                                            className={`relative aspect-square rounded-xl overflow-hidden border-2 ${
-                                                image.toDelete 
-                                                    ? 'border-red-500 opacity-50' 
-                                                    : image.is_primary 
-                                                        ? 'border-lira-green-1k ring-2 ring-lira-green-1k/30' 
-                                                        : 'border-gray-200'
-                                            }`}
+                                            className={`relative aspect-square rounded-xl overflow-hidden border-2 ${image.toDelete
+                                                ? 'border-red-500 opacity-50'
+                                                : image.is_primary
+                                                    ? 'border-lira-green-1k ring-2 ring-lira-green-1k/30'
+                                                    : 'border-gray-200'
+                                                }`}
                                         >
                                             <img src={image.image_url} alt="Service" className="w-full h-full object-cover" />
-                                            
+
                                             {image.is_primary && !image.toDelete && (
                                                 <div className="absolute top-2 left-2 bg-lira-green-1k text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
                                                     <Star size={12} /> Primary
@@ -532,12 +649,11 @@ export default function EditServicePage() {
                                     {newImages.map((image) => (
                                         <div
                                             key={image.id}
-                                            className={`relative aspect-square rounded-xl overflow-hidden border-2 ${
-                                                image.isPrimary ? 'border-lira-green-1k ring-2 ring-lira-green-1k/30' : 'border-gray-200'
-                                            }`}
+                                            className={`relative aspect-square rounded-xl overflow-hidden border-2 ${image.isPrimary ? 'border-lira-green-1k ring-2 ring-lira-green-1k/30' : 'border-gray-200'
+                                                }`}
                                         >
                                             <img src={image.preview} alt="Preview" className="w-full h-full object-cover" />
-                                            
+
                                             {image.isPrimary && (
                                                 <div className="absolute top-2 left-2 bg-lira-green-1k text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
                                                     <Star size={12} /> Primary
@@ -580,7 +696,7 @@ export default function EditServicePage() {
                                     <Trash2 size={18} className="mr-2" />
                                     Discard Service
                                 </Button>
-                                
+
                                 <div className="flex gap-4">
                                     <Button
                                         type="button"
@@ -608,73 +724,142 @@ export default function EditServicePage() {
                 </div>
             </div>
 
-            {/* Success Modal */}
-            {showSuccessModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden">
-                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-6 text-white text-center">
-                            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Check size={32} />
+            {/* Price Override Modal */}
+            {
+                showOverrideModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-lira-green-1k/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <HandCoins size={32} className="text-lira-green-1k" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900">Request Price Override</h3>
+                                <p className="text-gray-600 mt-2">
+                                    Request a higher price limit for this service.
+                                </p>
                             </div>
-                            <h3 className="text-2xl font-bold">Service Resubmitted!</h3>
-                            <p className="text-white/90 mt-2">Your service is pending approval again</p>
-                        </div>
-                        
-                        <div className="p-6 space-y-3">
-                            <button
-                                type="button"
-                                onClick={() => router.push(`/freelancer/services/${serviceId}`)}
-                                className="w-full py-3 bg-lira-green-1k hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors"
-                            >
-                                <Eye size={18} className="inline mr-2" /> View Service
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowSuccessModal(false);
-                                    router.push('/freelancer/services');
-                                }}
-                                className="w-full py-3 bg-lira-green-1k hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors"
-                            >
-                                Go to My Services
-                            </button>
+
+                            <form onSubmit={handleRequestOverride} className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-700">Requested Price (USD)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={overridePrice}
+                                        onChange={(e) => setOverridePrice(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none shadow-sm"
+                                        placeholder="Enter your desired price"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-700">Reason for Override</label>
+                                    <textarea
+                                        rows={4}
+                                        value={overrideReason}
+                                        onChange={(e) => setOverrideReason(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none resize-none shadow-sm"
+                                        placeholder="Explain why this service requires a higher price..."
+                                        required
+                                    />
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setShowOverrideModal(false)}
+                                        className="flex-1"
+                                        disabled={submittingOverride}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        className="flex-1 bg-lira-green-1k hover:bg-emerald-700 text-white"
+                                        disabled={submittingOverride}
+                                    >
+                                        {submittingOverride ? <Loader2 className="animate-spin" size={18} /> : 'Submit Request'}
+                                    </Button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* Success Modal */}
+            {
+                showSuccessModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden">
+                            <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-6 text-white text-center">
+                                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Check size={32} />
+                                </div>
+                                <h3 className="text-2xl font-bold">Service Resubmitted!</h3>
+                                <p className="text-white/90 mt-2">Your service is pending approval again</p>
+                            </div>
+
+                            <div className="p-6 space-y-3">
+                                <button
+                                    type="button"
+                                    onClick={() => router.push(`/freelancer/services/${serviceId}`)}
+                                    className="w-full py-3 bg-lira-green-1k hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors"
+                                >
+                                    <Eye size={18} className="inline mr-2" /> View Service
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowSuccessModal(false);
+                                        router.push('/freelancer/services');
+                                    }}
+                                    className="w-full py-3 bg-lira-green-1k hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors"
+                                >
+                                    Go to My Services
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Delete Confirmation Modal */}
-            {showDeleteModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6">
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Trash2 size={32} className="text-red-500" />
+            {
+                showDeleteModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Trash2 size={32} className="text-red-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900">Delete this service?</h3>
+                                <p className="text-gray-600 mt-2">This action cannot be undone. All images will be permanently deleted.</p>
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900">Delete this service?</h3>
-                            <p className="text-gray-600 mt-2">This action cannot be undone. All images will be permanently deleted.</p>
-                        </div>
-                        
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowDeleteModal(false)}
-                                className="flex-1"
-                                disabled={deleting}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleDelete}
-                                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                                disabled={deleting}
-                            >
-                                {deleting ? <Loader2 className="animate-spin" size={18} /> : 'Delete'}
-                            </Button>
+
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowDeleteModal(false)}
+                                    className="flex-1"
+                                    disabled={deleting}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleDelete}
+                                    className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                                    disabled={deleting}
+                                >
+                                    {deleting ? <Loader2 className="animate-spin" size={18} /> : 'Delete'}
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
