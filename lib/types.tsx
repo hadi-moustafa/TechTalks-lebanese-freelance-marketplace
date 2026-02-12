@@ -53,3 +53,28 @@ export interface ChatRoom {
   last_message?: Message
   unread_count?: number
 }
+
+export interface ServiceImage {
+  id: string
+  service_id: string
+  image_url: string
+  is_primary: boolean
+  uploaded_at: string
+}
+
+export interface Service {
+  id: string
+  freelancer_id: string
+  category_id: number
+  title: string
+  description: string
+  price: number
+  status: 'pending' | 'approved' | 'rejected'
+  rejection_reason?: string | null
+  created_at: string
+  categories?: {
+    id: number
+    name: string
+  }
+  service_images?: ServiceImage[]
+}
