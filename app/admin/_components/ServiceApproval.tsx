@@ -5,17 +5,12 @@ import { createBrowserClient } from '@supabase/ssr';
 import { Check, X, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
+import { ServiceImage } from '@/lib/types';
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-type ServiceImage = {
-    id: string;
-    image_url: string;
-    is_primary: boolean;
-};
 
 type Service = {
     id: string;

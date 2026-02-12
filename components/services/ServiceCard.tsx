@@ -2,31 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, DollarSign, Tag, Calendar, Image as ImageIcon } from 'lucide-react';
-
-type ServiceImage = {
-    id: number;
-    service_id: string;
-    image_url: string;
-    is_primary: boolean;
-    uploaded_at: string;
-};
-
-type Service = {
-    id: string;
-    freelancer_id: string;
-    category_id: number;
-    title: string;
-    description: string;
-    price: number;
-    status: 'pending' | 'approved' | 'rejected';
-    rejection_reason?: string | null;
-    created_at: string;
-    categories?: {
-        id: number;
-        name: string;
-    };
-    service_images?: ServiceImage[];
-};
+import { Service } from '@/lib/types';
 
 interface ServiceCardProps {
     service: Service;
@@ -46,7 +22,7 @@ export default function ServiceCard({ service, showStatus = false }: ServiceCard
     // Get status badge
     const getStatusBadge = () => {
         if (!showStatus) return null;
-        
+
         const statusStyles = {
             approved: 'bg-green-100 text-green-800',
             pending: 'bg-yellow-100 text-yellow-800',
@@ -66,7 +42,7 @@ export default function ServiceCard({ service, showStatus = false }: ServiceCard
                 <div className="flex gap-4">
                     {/* Image Thumbnail */}
                     {getPrimaryImage() ? (
-                        <div 
+                        <div
                             className="w-28 h-28 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
                             onClick={() => setSelectedImage(getPrimaryImage()!)}
                         >
@@ -90,11 +66,11 @@ export default function ServiceCard({ service, showStatus = false }: ServiceCard
                             </span>
                             {getStatusBadge()}
                         </div>
-                        
+
                         <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
                             {service.title}
                         </h3>
-                        
+
                         <div className="flex items-center gap-3 mb-3">
                             <span className="font-bold text-xl text-green-600">
                                 ${service.price}
@@ -181,7 +157,7 @@ export default function ServiceCard({ service, showStatus = false }: ServiceCard
                                         <p className="font-semibold text-gray-900">${service.price}</p>
                                     </div>
                                 </div>
-                                
+
                                 <div className="flex items-start gap-2">
                                     <Tag size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
                                     <div>
@@ -189,7 +165,7 @@ export default function ServiceCard({ service, showStatus = false }: ServiceCard
                                         <p className="font-semibold text-gray-900">{service.categories?.name || 'N/A'}</p>
                                     </div>
                                 </div>
-                                
+
                                 <div className="flex items-start gap-2">
                                     <Calendar size={16} className="text-purple-600 mt-0.5 flex-shrink-0" />
                                     <div>
@@ -199,7 +175,7 @@ export default function ServiceCard({ service, showStatus = false }: ServiceCard
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 <div className="flex items-start gap-2">
                                     <ImageIcon size={16} className="text-orange-600 mt-0.5 flex-shrink-0" />
                                     <div>
@@ -217,7 +193,7 @@ export default function ServiceCard({ service, showStatus = false }: ServiceCard
 
             {/* Image Lightbox Modal */}
             {selectedImage && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
                     onClick={() => setSelectedImage(null)}
                 >
