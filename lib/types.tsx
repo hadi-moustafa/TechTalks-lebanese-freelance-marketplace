@@ -31,3 +31,25 @@ export interface ApiResponse<T = any> {
   error?: string
   message?: string
 }
+
+export interface Message {
+  id: string
+  room_id: string
+  sender_id: string
+  message_text: string
+  is_read: boolean
+  sent_at: string
+}
+
+export interface ChatRoom {
+  id: string
+  client_id: string
+  freelancer_id: string
+  service_id: string
+  created_at: string
+  client?: User & { username: string; profile_pic?: null | string }
+  freelancer?: User & { username: string; profile_pic?: null | string }
+  service?: { title: string }
+  last_message?: Message
+  unread_count?: number
+}
