@@ -13,7 +13,7 @@ const supabase = createBrowserClient(
 );
 
 type ServiceImage = {
-    id: string;
+    id: number;
     service_id: string;
     image_url: string;
     is_primary: boolean;
@@ -47,6 +47,7 @@ export default function ServicesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
+    const [userId, setUserId] = useState<string | null>(null);
 
     // Fetch categories
     const fetchCategories = async () => {
@@ -90,6 +91,12 @@ export default function ServicesPage() {
 
     useEffect(() => {
         fetchCategories();
+        // Get current user
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUserId(user?.id || null);
+        };
+        getUser();
     }, []);
 
     useEffect(() => {
@@ -173,7 +180,12 @@ export default function ServicesPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {services.map((service) => (
-                        <ServiceCard key={service.id} service={service} />
+                        <ServiceCard
+                            key={service.id}
+                            service={service}
+                            showComments={true}
+                            userId={userId ?? undefined}
+                        />
                     ))}
                 </div>
             )}

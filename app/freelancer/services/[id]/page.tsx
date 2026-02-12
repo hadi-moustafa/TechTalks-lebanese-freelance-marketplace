@@ -21,6 +21,7 @@ import {
   ExternalLink,
   Eye,
   MessageCircle,
+  User,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -63,10 +64,13 @@ export default function ServiceDetailPage() {
     inquiries: 0,
     earnings: 0,
   });
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
 
   useEffect(() => {
     fetchService();
     fetchServiceStats();
+    fetchComments();
   }, [serviceId]);
 
   const fetchService = async () => {
@@ -136,6 +140,60 @@ export default function ServiceDetailPage() {
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
+  };
+
+  const fetchComments = async () => {
+    setCommentsLoading(true);
+    try {
+      const { data: commentsData } = await supabase
+        .from('service_comments')
+        .select('*')
+        .eq('service_id', serviceId)
+        .order('created_at', { ascending: false });
+
+      const userIds = [...new Set((commentsData || []).map((c: any) => c.user_id))];
+      let usersMap: Record<string, { username: string; profile_pic: string | null }> = {};
+
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, username, profile_pic')
+          .in('id', userIds);
+
+        (usersData || []).forEach((u: any) => {
+          usersMap[u.id] = { username: u.username, profile_pic: u.profile_pic };
+        });
+      }
+
+      const enriched = (commentsData || []).map((c: any) => ({
+        ...c,
+        users: usersMap[c.user_id] || { username: 'Unknown', profile_pic: null }
+      }));
+
+      setComments(enriched);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    const years = Math.floor(months / 12);
+    return `${years}y ago`;
   };
 
   const getStatusConfig = (status: string) => {
@@ -538,6 +596,68 @@ export default function ServiceDetailPage() {
                   {service.description}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Client Comments */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <MessageCircle className="text-gray-600" size={22} />
+                <h3 className="text-xl font-bold text-gray-900">
+                  Client Comments
+                </h3>
+                <span className="bg-gray-100 text-gray-600 text-sm font-medium px-2.5 py-0.5 rounded-full">
+                  {comments.length}
+                </span>
+              </div>
+            </div>
+            <div className="p-6">
+              {commentsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lira-green-1k"></div>
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MessageCircle className="text-gray-400" size={28} />
+                  </div>
+                  <p className="text-gray-500 font-medium">No comments yet</p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="flex gap-4">
+                      <div className="flex-shrink-0">
+                        {comment.users?.profile_pic ? (
+                          <img
+                            src={comment.users.profile_pic}
+                            alt={comment.users?.username || "User"}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-lira-green-1k/10 flex items-center justify-center text-lira-green-1k font-semibold">
+                            {(comment.users?.username || "U").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-gray-900 text-sm">
+                            {comment.users?.username || "Unknown User"}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {formatTimeAgo(comment.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                          {comment.comment}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

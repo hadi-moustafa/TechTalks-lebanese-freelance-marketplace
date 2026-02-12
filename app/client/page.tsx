@@ -5,7 +5,8 @@ import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import ServiceCard from '@/components/services/ServiceCard';
 import { Loader2, Package, Search, Filter } from 'lucide-react';
-import ClientProfileMenu from './_components/ClientProfileMenu';
+import ClientNavbar from './_components/ClientNavbar';
+import toast from 'react-hot-toast';
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,8 +51,8 @@ export default function ClientPage() {
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
-    // Check if user is logged in and is a client
     useEffect(() => {
         async function checkUser() {
             const { data: { user } } = await supabase.auth.getUser();
@@ -61,7 +62,6 @@ export default function ClientPage() {
                 return;
             }
 
-            // Verify user is a client
             const { data: userData } = await supabase
                 .from('users')
                 .select('role')
@@ -79,7 +79,6 @@ export default function ClientPage() {
         checkUser();
     }, [router]);
 
-    // Fetch categories
     const fetchCategories = async () => {
         const { data } = await supabase
             .from('categories')
@@ -89,7 +88,55 @@ export default function ClientPage() {
         setCategories(data || []);
     };
 
-    // Fetch services
+    const fetchFavorites = async (userId: string) => {
+        const { data } = await supabase
+            .from('favorites')
+            .select('service_id')
+            .eq('user_id', userId);
+
+        if (data) {
+            setFavoriteIds(new Set(data.map((f: { service_id: string }) => f.service_id)));
+        }
+    };
+
+    const toggleFavorite = async (serviceId: string) => {
+        if (!user) return;
+
+        const isFav = favoriteIds.has(serviceId);
+
+        if (isFav) {
+            const { error } = await supabase
+                .from('favorites')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('service_id', serviceId);
+
+            if (error) {
+                toast.error('Failed to remove favorite');
+                return;
+            }
+
+            setFavoriteIds((prev) => {
+                const next = new Set(prev);
+                next.delete(serviceId);
+                return next;
+            });
+            toast.success('Removed from favorites');
+        } else {
+            const { error } = await supabase
+                .from('favorites')
+                .insert({ user_id: user.id, service_id: serviceId });
+
+            if (error) {
+                toast.error('Failed to add favorite');
+                return;
+            }
+
+            setFavoriteIds((prev) => new Set(prev).add(serviceId));
+            toast.success('Added to favorites');
+        }
+    };
+
     const fetchServices = async () => {
         setLoading(true);
         
@@ -100,7 +147,7 @@ export default function ClientPage() {
                 categories:category_id (id, name),
                 service_images (*)
             `)
-            .eq('status', 'approved') // Only show approved services to clients
+            .eq('status', 'approved')
             .order('created_at', { ascending: false });
 
         if (selectedCategory !== 'all') {
@@ -112,7 +159,6 @@ export default function ClientPage() {
         if (error) {
             console.error('Error loading services:', error);
         } else {
-            console.log('✅ Services loaded:', data);
             setServices(data || []);
         }
         
@@ -122,6 +168,7 @@ export default function ClientPage() {
     useEffect(() => {
         if (user) {
             fetchCategories();
+            fetchFavorites(user.id);
         }
     }, [user]);
 
@@ -131,18 +178,15 @@ export default function ClientPage() {
         }
     }, [user, selectedCategory]);
 
-    // Real-time updates
     useEffect(() => {
         if (!user) return;
 
         const channel = supabase
             .channel('client-services')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, () => {
-                console.log('🔄 Service updated in real-time');
                 fetchServices();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'service_images' }, () => {
-                console.log('🔄 Service image updated in real-time');
                 fetchServices();
             })
             .subscribe();
@@ -152,7 +196,6 @@ export default function ClientPage() {
         };
     }, [user, selectedCategory]);
 
-    // Filter services by search query
     const filteredServices = services.filter(service => {
         if (!searchQuery) return true;
         
@@ -174,21 +217,11 @@ export default function ClientPage() {
 
     return (
         <div className="min-h-screen bg-lebanese-pattern font-sans relative">
-            {/* Decorative overlay */}
             <div className="absolute inset-0 bg-white/40 pointer-events-none z-0"></div>
 
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
-                <header className="flex justify-between items-center mb-10">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-lira-text tracking-tight">
-                            Client Portal
-                        </h1>
-                        <p className="text-gray-500 mt-1">Explore services and manage projects</p>
-                    </div>
-                    <ClientProfileMenu />
-                </header>
+            <ClientNavbar />
 
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Search Bar */}
                 <div className="mb-6">
                     <div className="relative">
@@ -263,6 +296,10 @@ export default function ClientPage() {
                                     key={service.id}
                                     service={service}
                                     showStatus={false}
+                                    isFavorited={favoriteIds.has(service.id)}
+                                    onToggleFavorite={() => toggleFavorite(service.id)}
+                                    showComments={true}
+                                    userId={user?.id}
                                 />
                             ))}
                         </div>
