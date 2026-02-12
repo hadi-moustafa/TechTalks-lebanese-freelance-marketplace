@@ -5,38 +5,13 @@ import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import ServiceCard from '@/components/services/ServiceCard';
 import { Loader2, Package, Search, Filter } from 'lucide-react';
-import ClientNavbar from './_components/ClientNavbar';
-import toast from 'react-hot-toast';
+import ClientProfileMenu from './_components/ClientProfileMenu';
+import { Service } from '@/lib/types';
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-type ServiceImage = {
-    id: number;
-    service_id: string;
-    image_url: string;
-    is_primary: boolean;
-    uploaded_at: string;
-};
-
-type Service = {
-    id: string;
-    freelancer_id: string;
-    category_id: number;
-    title: string;
-    description: string;
-    price: number;
-    status: 'pending' | 'approved' | 'rejected';
-    rejection_reason?: string | null;
-    created_at: string;
-    categories?: {
-        id: number;
-        name: string;
-    };
-    service_images?: ServiceImage[];
-};
 
 type Category = {
     id: number;
@@ -56,7 +31,7 @@ export default function ClientPage() {
     useEffect(() => {
         async function checkUser() {
             const { data: { user } } = await supabase.auth.getUser();
-            
+
             if (!user) {
                 router.push('/login');
                 return;
@@ -75,7 +50,7 @@ export default function ClientPage() {
 
             setUser(user);
         }
-        
+
         checkUser();
     }, [router]);
 
@@ -84,7 +59,7 @@ export default function ClientPage() {
             .from('categories')
             .select('*')
             .order('name');
-        
+
         setCategories(data || []);
     };
 
@@ -139,7 +114,7 @@ export default function ClientPage() {
 
     const fetchServices = async () => {
         setLoading(true);
-        
+
         let query = supabase
             .from('services')
             .select(`
@@ -161,7 +136,7 @@ export default function ClientPage() {
         } else {
             setServices(data || []);
         }
-        
+
         setLoading(false);
     };
 
@@ -198,7 +173,7 @@ export default function ClientPage() {
 
     const filteredServices = services.filter(service => {
         if (!searchQuery) return true;
-        
+
         const query = searchQuery.toLowerCase();
         return (
             service.title.toLowerCase().includes(query) ||
@@ -245,11 +220,10 @@ export default function ClientPage() {
                     <div className="flex flex-wrap gap-3">
                         <button
                             onClick={() => setSelectedCategory('all')}
-                            className={`px-5 py-2.5 rounded-lg font-medium transition-all ${
-                                selectedCategory === 'all'
+                            className={`px-5 py-2.5 rounded-lg font-medium transition-all ${selectedCategory === 'all'
                                     ? 'bg-lira-green-1k text-white shadow-md'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                                }`}
                         >
                             All Services ({services.length})
                         </button>
@@ -257,11 +231,10 @@ export default function ClientPage() {
                             <button
                                 key={cat.id}
                                 onClick={() => setSelectedCategory(cat.id)}
-                                className={`px-5 py-2.5 rounded-lg font-medium transition-all ${
-                                    selectedCategory === cat.id
+                                className={`px-5 py-2.5 rounded-lg font-medium transition-all ${selectedCategory === cat.id
                                         ? 'bg-lira-green-1k text-white shadow-md'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
+                                    }`}
                             >
                                 {cat.name}
                             </button>

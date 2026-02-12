@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -9,9 +9,13 @@ import {
     Briefcase,
     Menu,
     X,
-    Landmark
+    Landmark,
+    MessageCircle,
+    Crown,
+    Star
 } from 'lucide-react';
 import FreelancerProfileMenu from './_components/FreelancerProfileMenu';
+import { supabase } from '@/app/supabase/client';
 
 export default function FreelancerLayout({
     children,
@@ -20,6 +24,25 @@ export default function FreelancerLayout({
 }) {
     const pathname = usePathname();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isPro, setIsPro] = useState(false);
+
+    useEffect(() => {
+        const checkProStatus = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('subscription_tier')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profile?.subscription_tier === 'pro') {
+                    setIsPro(true);
+                }
+            }
+        };
+        checkProStatus();
+    }, []);
 
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -41,6 +64,12 @@ export default function FreelancerLayout({
             href: '/freelancer/services',
             icon: Briefcase,
             description: 'View services'
+        },
+        {
+            name: 'Chat',
+            href: '/freelancer/chat',
+            icon: MessageCircle,
+            description: 'Talk to Clients'
         }
     ];
 
@@ -65,10 +94,10 @@ export default function FreelancerLayout({
                     <div className="h-16 flex items-center px-6 border-b border-gray-100">
                         <Link href="/freelancer" className="flex items-center gap-2 font-bold text-xl text-lira-text hover:opacity-80 transition-opacity">
                             {/* Abstract Cedar Tree Icon representation */}
-                            <div className="w-8 h-8 bg-gradient-to-tr from-lira-green-1k to-emerald-600 rounded-lg flex items-center justify-center transform rotate-3 shadow-md">
+                            <div className="w-8 h-8 bg-lebanon-red rounded-lg flex items-center justify-center transform rotate-3 shadow-md">
                                 <span className="text-white font-bold text-lg">L</span>
                             </div>
-                            <span>LFM<span className="text-lira-green-1k">.</span></span>
+                            <span>LFM<span className="text-lebanon-green">.</span></span>
                         </Link>
                         <button
                             className="ml-auto lg:hidden text-gray-500"
@@ -91,14 +120,14 @@ export default function FreelancerLayout({
                                     className={`
                                         w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group
                                         ${isActive
-                                            ? 'bg-lira-green-1k/10 text-lira-green-1k shadow-sm'
-                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                                            ? 'bg-gradient-to-r from-lebanon-green/10 to-transparent text-lebanon-green border-r-4 border-lebanon-green'
+                                            : 'text-gray-600 hover:bg-gray-50 hover:text-lebanon-red'}
                                     `}
                                 >
-                                    <Icon size={20} className={isActive ? 'text-lira-green-1k' : 'text-gray-400 group-hover:text-lira-green-1k'} />
+                                    <Icon size={20} className={isActive ? 'text-lebanon-green' : 'text-gray-400 group-hover:text-lebanon-red transition-colors'} />
                                     <div className="flex flex-col">
                                         <span>{item.name}</span>
-                                        <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 group-hover:text-lira-green-1k transition-colors font-normal">
+                                        <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 group-hover:text-lebanon-red/70 transition-colors">
                                             {item.description}
                                         </span>
                                     </div>
@@ -115,9 +144,9 @@ export default function FreelancerLayout({
                              maybe add something else here or leave empty. 
                          */}
                         <div className="bg-lira-green-1k/5 rounded-xl p-4">
-                            <p className="text-xs font-semibold text-lira-green-1k uppercase mb-2">My Status</p>
+                            <p className="text-xs font-semibold text-lebanon-green uppercase mb-2">My Status</p>
                             <div className="flex items-center gap-2 text-sm text-green-700">
-                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                <span className="w-2 h-2 rounded-full bg-lebanon-green animate-pulse" />
                                 Online
                             </div>
                         </div>
@@ -140,7 +169,18 @@ export default function FreelancerLayout({
                         {menuItems.find(i => i.href === pathname)?.name || 'Freelancer Dashboard'}
                     </h1>
 
-                    <div className="ml-auto">
+                    <div className="ml-auto flex items-center gap-4">
+                        {isPro ? (
+                            <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-white rounded-full font-bold shadow-md animate-pulse">
+                                <Star size={16} className="text-white" fill="currentColor" />
+                                <span>Ahla bl PRO! 🇱🇧</span>
+                            </div>
+                        ) : (
+                            <Link href="/freelancer/upgrade" className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-lebanon-red to-red-600 text-white rounded-full font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
+                                <Crown size={16} className="text-yellow-300" />
+                                <span>Upgrade to Pro</span>
+                            </Link>
+                        )}
                         <FreelancerProfileMenu />
                     </div>
                 </header>

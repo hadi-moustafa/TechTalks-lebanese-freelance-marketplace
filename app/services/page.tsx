@@ -6,36 +6,12 @@ import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import ServiceCard from '@/components/services/ServiceCard';
 import { Loader2, Package, Filter } from 'lucide-react';
+import { Service } from '@/lib/types';
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-type ServiceImage = {
-    id: number;
-    service_id: string;
-    image_url: string;
-    is_primary: boolean;
-    uploaded_at: string;
-};
-
-type Service = {
-    id: string;
-    freelancer_id: string;
-    category_id: number;
-    title: string;
-    description: string;
-    price: number;
-    status: 'pending' | 'approved' | 'rejected';
-    rejection_reason?: string | null;
-    created_at: string;
-    categories?: {
-        id: number;
-        name: string;
-    };
-    service_images?: ServiceImage[];
-};
 
 type Category = {
     id: number;
@@ -55,14 +31,14 @@ export default function ServicesPage() {
             .from('categories')
             .select('*')
             .order('name');
-        
+
         setCategories(data || []);
     };
 
     // Fetch services
     const fetchServices = async () => {
         setLoading(true);
-        
+
         let query = supabase
             .from('services')
             .select(`
@@ -85,7 +61,7 @@ export default function ServicesPage() {
             console.log('Services loaded:', data);
             setServices(data || []);
         }
-        
+
         setLoading(false);
     };
 
@@ -146,11 +122,10 @@ export default function ServicesPage() {
                 <div className="flex flex-wrap gap-3">
                     <button
                         onClick={() => setSelectedCategory('all')}
-                        className={`px-5 py-2.5 rounded-lg font-medium ${
-                            selectedCategory === 'all'
+                        className={`px-5 py-2.5 rounded-lg font-medium ${selectedCategory === 'all'
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                            }`}
                     >
                         All Services
                     </button>
@@ -158,11 +133,10 @@ export default function ServicesPage() {
                         <button
                             key={cat.id}
                             onClick={() => setSelectedCategory(cat.id)}
-                            className={`px-5 py-2.5 rounded-lg font-medium ${
-                                selectedCategory === cat.id
+                            className={`px-5 py-2.5 rounded-lg font-medium ${selectedCategory === cat.id
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                                }`}
                         >
                             {cat.name}
                         </button>
