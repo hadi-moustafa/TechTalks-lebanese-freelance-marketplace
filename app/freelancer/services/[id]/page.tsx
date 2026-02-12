@@ -21,7 +21,6 @@ import {
   ExternalLink,
   Eye,
   MessageCircle,
-  User,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ServiceComments from "./ServiceComments";
@@ -65,13 +64,10 @@ export default function ServiceDetailPage() {
     inquiries: 0,
     earnings: 0,
   });
-  const [comments, setComments] = useState<any[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(false);
 
   useEffect(() => {
     fetchService();
     fetchServiceStats();
-    fetchComments();
   }, [serviceId]);
 
   const fetchService = async () => {
@@ -141,60 +137,6 @@ export default function ServiceDetailPage() {
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
-  };
-
-  const fetchComments = async () => {
-    setCommentsLoading(true);
-    try {
-      const { data: commentsData } = await supabase
-        .from('service_comments')
-        .select('*')
-        .eq('service_id', serviceId)
-        .order('created_at', { ascending: false });
-
-      const userIds = [...new Set((commentsData || []).map((c: any) => c.user_id))];
-      let usersMap: Record<string, { username: string; profile_pic: string | null }> = {};
-
-      if (userIds.length > 0) {
-        const { data: usersData } = await supabase
-          .from('users')
-          .select('id, username, profile_pic')
-          .in('id', userIds);
-
-        (usersData || []).forEach((u: any) => {
-          usersMap[u.id] = { username: u.username, profile_pic: u.profile_pic };
-        });
-      }
-
-      const enriched = (commentsData || []).map((c: any) => ({
-        ...c,
-        users: usersMap[c.user_id] || { username: 'Unknown', profile_pic: null }
-      }));
-
-      setComments(enriched);
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-    } finally {
-      setCommentsLoading(false);
-    }
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const now = new Date();
-    const date = new Date(dateString);
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (seconds < 60) return "just now";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    const months = Math.floor(days / 30);
-    if (months < 12) return `${months}mo ago`;
-    const years = Math.floor(months / 12);
-    return `${years}y ago`;
   };
 
   const getStatusConfig = (status: string) => {
