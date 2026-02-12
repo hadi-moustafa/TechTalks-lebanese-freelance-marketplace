@@ -120,13 +120,13 @@ export default function ServicesPage() {
                     <h1 className="text-3xl font-bold text-gray-900">My Services</h1>
                     <p className="text-gray-600 mt-1">Manage your gigs and services</p>
                 </div>
-                <Button
+                <button
                     onClick={() => router.push('/freelancer/services/create')}
-                    className="bg-lira-green-1k text-lime-500 border-emerald-300 border hover:bg-emerald-700 flex items-center gap-2"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-lira-green-1k text-white font-bold rounded-lg border-2 border-emerald-800 shadow-md hover:bg-emerald-700 transition-colors"
                 >
-                    <Plus size={20} className='text-lime-500' />
+                    <Plus size={20} />
                     Create New Service
-                </Button>
+                </button>
             </div>
 
             {/* Stats Cards - Clickable Filters */}
