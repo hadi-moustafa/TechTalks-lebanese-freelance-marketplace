@@ -124,7 +124,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Prevent cross-role access
-  if (!path.startsWith(allowedRoot)) {
+  if (!path.startsWith(allowedRoot) && !path.startsWith("/api")) {
     return NextResponse.redirect(new URL(allowedRoot, req.url));
   }
 

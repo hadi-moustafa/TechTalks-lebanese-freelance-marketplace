@@ -23,6 +23,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import ServiceComments from "./ServiceComments";
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -540,6 +541,9 @@ export default function ServiceDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Comments Section */}
+          <ServiceComments serviceId={service.id} />
         </div>
 
         {/* Right Column - Details & Actions */}

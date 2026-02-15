@@ -240,60 +240,62 @@ export default function ServicesPage() {
                     {filteredServices.map((service) => (
                         <div
                             key={service.id}
-                            className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                            className="group bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                         >
                             {/* Image */}
-                            <div className="relative h-48 bg-gray-100">
+                            <div className="relative h-56 bg-gray-100 overflow-hidden">
                                 {getPrimaryImage(service) ? (
                                     <img
                                         src={getPrimaryImage(service)}
                                         alt={service.title}
-                                        className="w-full h-full object-cover"
+                                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-50">
                                         <Briefcase size={48} className="text-gray-300" />
                                     </div>
                                 )}
                                 <div className="absolute top-3 right-3">
                                     {getStatusBadge(service.status)}
                                 </div>
+
+                                {/* View Counter Badge - Only visible on hover/group-hover or always if preferred */}
+                                <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                                    <Eye size={14} className="text-lebanon-green" />
+                                    <span className="text-xs font-bold text-gray-800">124 Views</span>
+                                </div>
                             </div>
 
                             {/* Content */}
-                            <div className="p-5">
-                                <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-1">
+                            <div className="p-6">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-xs font-bold text-lebanon-green uppercase tracking-wide">
+                                        {service.categories?.name || 'Uncategorized'}
+                                    </p>
+                                    <div className="flex gap-1">
+                                        {[1, 2, 3, 4, 5].map(i => (
+                                            <svg key={i} className={`w-3 h-3 ${i <= 4 ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1 group-hover:text-lebanon-red transition-colors">
                                     {service.title}
                                 </h3>
-                                <p className="text-sm text-gray-500 mb-3">
-                                    {service.categories?.name || 'Uncategorized'}
-                                </p>
-                                <p className="text-gray-600 text-sm line-clamp-2 mb-4">
+                                <p className="text-gray-500 text-sm line-clamp-2 mb-4 h-10">
                                     {service.description}
                                 </p>
 
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xl font-bold text-lira-green-1k">
+                                <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                                    <span className="text-xl font-black text-gray-900">
                                         ${service.price}
                                     </span>
                                     <div className="flex gap-2">
-                                        {service.status === 'rejected' && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => router.push(`/freelancer/services/edit/${service.id}`)}
-                                                className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                                            >
-                                                <RefreshCw size={16} className="mr-1" />
-                                                Edit
-                                            </Button>
-                                        )}
                                         <button
                                             onClick={() => router.push(`/freelancer/services/${service.id}`)}
-                                            className="flex items-center px-3 py-1.5 text-sm text-emerald-600 border border-emerald-300 rounded-md font-medium hover:bg-emerald-50 transition-colors"
+                                            className="flex items-center px-4 py-2 text-sm text-white bg-gray-900 rounded-xl font-bold hover:bg-lebanon-red transition-colors shadow-sm"
                                         >
-                                            <Eye size={16} className="mr-1" />
-                                            View
+                                            Manage
                                         </button>
                                     </div>
                                 </div>

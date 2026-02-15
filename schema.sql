@@ -1,6 +1,4 @@
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
-
+-- User Provided Schema
 CREATE TABLE public.account_levels (
   id integer NOT NULL DEFAULT nextval('account_levels_id_seq'::regclass),
   level_name character varying NOT NULL,
@@ -47,6 +45,15 @@ CREATE TABLE public.debt_ledger (
   CONSTRAINT debt_ledger_pkey PRIMARY KEY (id),
   CONSTRAINT debt_ledger_freelancer_id_fkey FOREIGN KEY (freelancer_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.favorites (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  service_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT favorites_pkey PRIMARY KEY (id),
+  CONSTRAINT favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT favorites_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
+);
 CREATE TABLE public.messages (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   room_id uuid,
@@ -64,6 +71,31 @@ CREATE TABLE public.otp_codes (
   expires_at timestamp with time zone NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT otp_codes_pkey PRIMARY KEY (email)
+);
+CREATE TABLE public.price_override_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  service_id uuid NOT NULL,
+  freelancer_id uuid NOT NULL,
+  original_price numeric NOT NULL,
+  requested_price numeric NOT NULL,
+  reason text,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])),
+  admin_notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  resolved_at timestamp with time zone,
+  CONSTRAINT price_override_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT price_override_requests_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
+  CONSTRAINT price_override_requests_freelancer_id_fkey FOREIGN KEY (freelancer_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.service_comments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  service_id uuid NOT NULL,
+  comment text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT service_comments_pkey PRIMARY KEY (id),
+  CONSTRAINT service_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT service_comments_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
 );
 CREATE TABLE public.service_images (
   id integer NOT NULL DEFAULT nextval('service_images_id_seq'::regclass),
@@ -109,4 +141,33 @@ CREATE TABLE public.users (
   profile_pic text,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_level_id_fkey FOREIGN KEY (level_id) REFERENCES public.account_levels(id)
+);
+
+-- PROPOSED ADDITIONS FOR FULL FUNCTIONALITY
+-- (Referenced by dashboard analytics and notifications)
+
+CREATE TABLE public.orders (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  client_id uuid NOT NULL,
+  freelancer_id uuid NOT NULL,
+  service_id uuid NOT NULL,
+  status character varying NOT NULL DEFAULT 'pending', -- pending, active, completed, cancelled
+  amount numeric NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT orders_pkey PRIMARY KEY (id),
+  CONSTRAINT orders_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id),
+  CONSTRAINT orders_freelancer_id_fkey FOREIGN KEY (freelancer_id) REFERENCES public.users(id),
+  CONSTRAINT orders_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
+);
+
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  message text NOT NULL,
+  type character varying NOT NULL, -- 'order', 'system', 'chat'
+  is_read boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
