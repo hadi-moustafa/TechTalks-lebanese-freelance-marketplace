@@ -12,9 +12,10 @@ import {
     CheckCircle2,
     AlertCircle,
     Clock,
-    DollarSign
+    DollarSign,
+    UserLock
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
 import {
     AreaChart,
     Area,
@@ -29,10 +30,7 @@ import {
     Legend
 } from 'recharts';
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 
 // Mock Data for Charts
 const earningsData = [
@@ -59,6 +57,7 @@ const notificationsMock = [
 ];
 
 export default function FreelancerDashboard() {
+    const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'pro'>('free');
     const [stats, setStats] = useState({
         profileViews: 1245, // Mocked
         activeGigs: 0,
@@ -73,9 +72,26 @@ export default function FreelancerDashboard() {
 
             // Get current user
             const { data: { user } } = await supabase.auth.getUser();
+
             if (!user) {
                 setLoading(false);
                 return;
+            }
+
+            // Get freelancer tier
+            const { data: freelancer, error } = await supabase
+                .from('users')
+                .select('subscription_tier')
+                .eq('id', user.id)
+                .single();
+
+            if (error) {
+                console.error('Tier fetch error:', error);
+                setSubscriptionTier('free');
+            } else {
+                setSubscriptionTier(
+                    freelancer?.subscription_tier === 'pro' ? 'pro' : 'free'
+                );
             }
 
             // 1. Get Active Gigs count
@@ -128,6 +144,45 @@ export default function FreelancerDashboard() {
         }
     ];
 
+
+    function LockedValue({
+        value,
+        locked
+    }: {
+        value: string | number;
+        locked: boolean;
+    }) {
+        if (!locked) {
+            return <span>{value}</span>;
+        }
+
+        return (
+            <div className="relative group inline-block">
+                {/* blurred value */}
+                <span className="blur-sm select-none">{value}</span>
+
+                {/* lock overlay */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs bg-white px-2 py-0.5 rounded-full shadow text-gray-700">
+                        <UserLock />
+                    </span>
+                </div>
+
+                {/* tooltip */}
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 
+                opacity-0 group-hover:opacity-100 
+                pointer-events-none 
+                transition
+                bg-gray-900 text-white text-xs px-3 py-2 rounded-lg 
+                whitespace-nowrap shadow-lg">
+                    Upgrade to see who viewed your profile
+                </div>
+            </div>
+        );
+    }
+
+
+
     if (loading) {
         return (
             <div className="animate-pulse space-y-8 p-4">
@@ -174,7 +229,18 @@ export default function FreelancerDashboard() {
                                 </div>
                             </div>
                             <h3 className="text-gray-500 text-sm font-medium">{stat.title}</h3>
-                            <p className="text-3xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                            <div className="text-3xl font-bold text-gray-900 mt-1">
+                                {stat.title === 'Profile Views' ? (
+                                    <LockedValue
+                                        value={stat.value}
+                                        locked={subscriptionTier === 'free'}
+                                    />
+                                ) : (
+                                    stat.value
+                                )}
+                            </div>
+
+
                         </div>
                     );
                 })}
@@ -271,7 +337,7 @@ export default function FreelancerDashboard() {
                             {notificationsMock.map((notif) => (
                                 <div key={notif.id} className="flex gap-3 items-start border-b border-gray-50 last:border-0 pb-3 last:pb-0">
                                     <div className={`mt-1 min-w-[32px] h-8 rounded-full flex items-center justify-center ${notif.type === 'order' ? 'bg-green-50 text-lebanon-green' :
-                                            notif.type === 'money' ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600'
+                                        notif.type === 'money' ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600'
                                         }`}>
                                         {notif.type === 'order' ? <Briefcase size={14} /> :
                                             notif.type === 'money' ? <DollarSign size={14} /> : <AlertCircle size={14} />}
