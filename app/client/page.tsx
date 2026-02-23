@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import ServiceCard from '@/components/services/ServiceCard';
-import { Loader2, Package, Search, Filter } from 'lucide-react';
+import { Loader2, Package, Search, Filter, MessageCircle } from 'lucide-react';
 import ClientProfileMenu from './_components/ClientProfileMenu';
 import { Service } from '@/lib/types';
 
@@ -140,6 +140,51 @@ export default function ClientPage() {
         );
     });
 
+    const handleContactFreelancer = async (serviceId: string, freelancerId: string) => {
+        if (!user) return;
+
+        try {
+            // Check if room exists
+            const { data: existingRoom, error: fetchError } = await supabase
+                .from('chat_rooms')
+                .select('id')
+                .eq('client_id', user.id)
+                .eq('freelancer_id', freelancerId)
+                .eq('service_id', serviceId)
+                .single();
+
+            if (existingRoom) {
+                // Room exists, redirect to chat (eventually we can pass ?room=existingRoom.id)
+                router.push('/client/chat');
+                return;
+            }
+
+            if (fetchError && fetchError.code !== 'PGRST116') {
+                console.error('Error checking existing chat room:', fetchError);
+            }
+
+            // Create new room
+            const { data: newRoom, error: createError } = await supabase
+                .from('chat_rooms')
+                .insert({
+                    client_id: user.id,
+                    freelancer_id: freelancerId,
+                    service_id: serviceId
+                })
+                .select()
+                .single();
+
+            if (createError) throw createError;
+
+            // Redirect to chat
+            router.push('/client/chat');
+
+        } catch (error) {
+            console.error('Error creating chat room:', error);
+            // Optionally add toast notification here
+        }
+    };
+
     if (!user) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -157,40 +202,49 @@ export default function ClientPage() {
                 {/* Header */}
                 <header className="flex justify-between items-center mb-10">
                     <div>
-                        <h1 className="text-3xl font-extrabold text-lira-text tracking-tight">
+                        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
                             Client Portal
                         </h1>
-                        <p className="text-gray-500 mt-1">Explore services and manage projects</p>
+                        <p className="text-gray-700 mt-1 font-medium">Explore services and manage projects</p>
                     </div>
-                    <ClientProfileMenu />
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => router.push('/client/chat')}
+                            className="flex items-center gap-2 px-4 py-2 bg-white/80 hover:bg-white text-gray-900 font-semibold rounded-full border border-gray-300 shadow-sm transition-all"
+                        >
+                            <MessageCircle size={20} className="text-blue-600" />
+                            <span className="hidden sm:inline">Messages</span>
+                        </button>
+                        <ClientProfileMenu />
+                    </div>
                 </header>
 
                 {/* Search Bar */}
                 <div className="mb-6">
                     <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                         <input
                             type="text"
                             placeholder="Search services by title, description, or category..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none"
+                            className="w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl bg-white/90 backdrop-blur-sm text-gray-900 placeholder:text-gray-600 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm"
                         />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" size={20} />
                     </div>
                 </div>
 
                 {/* Category Filters */}
                 <div className="mb-8 bg-white/80 backdrop-blur-sm rounded-xl border border-lira-green-1k p-6">
                     <div className="flex items-center gap-2 mb-4">
-                        <Filter size={20} className="text-lira-green-1k" />
-                        <h2 className="text-lg font-semibold text-gray-900">Filter by Category</h2>
+                        <Filter size={20} className="text-gray-800" />
+                        <h2 className="text-lg font-bold text-gray-900">Filter by Category</h2>
                     </div>
                     <div className="flex flex-wrap gap-3">
                         <button
                             onClick={() => setSelectedCategory('all')}
-                            className={`px-5 py-2.5 rounded-lg font-medium transition-all ${selectedCategory === 'all'
-                                    ? 'bg-lira-green-1k text-white shadow-md'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            className={`px-5 py-2.5 rounded-lg font-semibold transition-all shadow-sm border border-transparent ${selectedCategory === 'all'
+                                ? 'bg-blue-600 text-white border-blue-700'
+                                : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50'
                                 }`}
                         >
                             All Services ({services.length})
@@ -199,9 +253,9 @@ export default function ClientPage() {
                             <button
                                 key={cat.id}
                                 onClick={() => setSelectedCategory(cat.id)}
-                                className={`px-5 py-2.5 rounded-lg font-medium transition-all ${selectedCategory === cat.id
-                                        ? 'bg-lira-green-1k text-white shadow-md'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                className={`px-5 py-2.5 rounded-lg font-semibold transition-all shadow-sm border border-transparent ${selectedCategory === cat.id
+                                    ? 'bg-blue-600 text-white border-blue-700'
+                                    : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50'
                                     }`}
                             >
                                 {cat.name}
@@ -228,7 +282,7 @@ export default function ClientPage() {
                     </div>
                 ) : (
                     <>
-                        <div className="mb-4 text-gray-700 font-medium">
+                        <div className="mb-4 text-gray-900 font-bold bg-white/80 backdrop-blur-sm inline-block px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
                             Showing {filteredServices.length} {filteredServices.length === 1 ? 'service' : 'services'}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -237,6 +291,7 @@ export default function ClientPage() {
                                     key={service.id}
                                     service={service}
                                     showStatus={false}
+                                    onContact={handleContactFreelancer}
                                 />
                             ))}
                         </div>

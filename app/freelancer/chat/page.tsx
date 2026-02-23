@@ -32,6 +32,7 @@ export default function ChatPage() {
     } = useChat();
 
     const [newMessage, setNewMessage] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [isMobileListVisible, setIsMobileListVisible] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -56,13 +57,18 @@ export default function ChatPage() {
 
     const selectedRoom = chatRooms.find(r => r.id === selectedRoomId);
 
-    // Helper to get the other person in the chat
     const getContact = (room: ChatRoom) => {
         if (room.client_id === currentUser) {
             return room.freelancer;
         }
         return room.client;
     };
+
+    const filteredRooms = chatRooms.filter(room => {
+        if (!searchQuery) return true;
+        const contact = getContact(room);
+        return contact?.username?.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     return (
         <div className="h-[calc(100vh-theme(spacing.24))] bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex">
@@ -81,8 +87,10 @@ export default function ChatPage() {
                     <div className="relative">
                         <input
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search chats..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none text-sm transition-all shadow-sm"
+                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-lira-green-1k focus:border-lira-green-1k outline-none text-sm transition-all shadow-sm text-gray-900 font-medium placeholder-gray-500"
                         />
                         <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
                     </div>
@@ -94,10 +102,12 @@ export default function ChatPage() {
                         <div className="flex justify-center items-center h-full">
                             <Loader2 className="animate-spin text-lebanon-green" size={24} />
                         </div>
-                    ) : chatRooms.length === 0 ? (
-                        <div className="text-center p-4 text-gray-500">No conversations yet.</div>
+                    ) : filteredRooms.length === 0 ? (
+                        <div className="text-center p-4 text-gray-500">
+                            {searchQuery ? 'No conversations found.' : 'No conversations yet.'}
+                        </div>
                     ) : (
-                        chatRooms.map((room) => {
+                        filteredRooms.map((room) => {
                             const contact = getContact(room);
                             return (
                                 <button
@@ -176,8 +186,6 @@ export default function ChatPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-4 text-gray-400">
-                            <button className="hover:text-lebanon-green hover:bg-lira-green-1k p-2 rounded-full transition-colors"><Phone size={20} /></button>
-                            <button className="hover:text-lebanon-green hover:bg-lira-green-1k p-2 rounded-full transition-colors"><Video size={20} /></button>
                             <button className="hover:text-gray-600 p-2 rounded-full"><MoreVertical size={20} /></button>
                         </div>
                     </div>
@@ -227,20 +235,14 @@ export default function ChatPage() {
                     {/* Input Area */}
                     <div className="p-4 bg-white border-t border-gray-100">
                         <form onSubmit={handleSendMessage} className="flex gap-4 items-end">
-                            <button type="button" className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
-                                <Paperclip size={20} />
-                            </button>
                             <div className="flex-1 relative">
                                 <input
                                     type="text"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     placeholder="Type your message..."
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-4 pr-12 focus:ring-2 focus:ring-lebanon-green/20 focus:border-lebanon-green outline-none transition-all resize-none"
+                                    className="w-full bg-gray-50 border border-gray-300 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-lebanon-green/20 focus:border-lebanon-green outline-none transition-all resize-none text-gray-900 font-medium placeholder-gray-500"
                                 />
-                                <button type="button" className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
-                                    <Smile size={20} />
-                                </button>
                             </div>
                             <button
                                 type="submit"
