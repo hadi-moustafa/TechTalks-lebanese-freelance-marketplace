@@ -7,9 +7,10 @@ import { Service } from '@/lib/types';
 interface ServiceCardProps {
     service: Service;
     showStatus?: boolean;
+    onContact?: (serviceId: string, freelancerId: string) => void;
 }
 
-export default function ServiceCard({ service, showStatus = false }: ServiceCardProps) {
+export default function ServiceCard({ service, showStatus = false, onContact }: ServiceCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -187,6 +188,21 @@ export default function ServiceCard({ service, showStatus = false }: ServiceCard
                                 </div>
                             </div>
                         </div>
+
+                        {/* Contact Freelancer Button */}
+                        {onContact && (
+                            <div className="pt-2">
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        onContact(service.id, service.freelancer_id);
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+                                >
+                                    Contact Freelancer
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
