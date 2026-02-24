@@ -7,10 +7,12 @@ import { Service } from '@/lib/types';
 interface ServiceCardProps {
     service: Service;
     showStatus?: boolean;
+    topRated?: boolean;
     onContact?: (serviceId: string, freelancerId: string) => void;
+    onView?: (serviceId: string) => void;
 }
 
-export default function ServiceCard({ service, showStatus = false, onContact }: ServiceCardProps) {
+export default function ServiceCard({ service, showStatus = false, topRated = false, onContact, onView }: ServiceCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -66,6 +68,11 @@ export default function ServiceCard({ service, showStatus = false, onContact }: 
                                 {service.categories?.name || 'Uncategorized'}
                             </span>
                             {getStatusBadge()}
+                            {topRated && (
+                                <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700 uppercase tracking-wide">
+                                    ⭐ Top Rated
+                                </span>
+                            )}
                         </div>
 
                         <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
@@ -88,7 +95,13 @@ export default function ServiceCard({ service, showStatus = false, onContact }: 
                         )}
 
                         <button
-                            onClick={() => setIsExpanded(!isExpanded)}
+                            onClick={() => {
+                                const willExpand = !isExpanded;
+                                setIsExpanded(willExpand);
+                                if (willExpand && onView) {
+                                    onView(service.id);
+                                }
+                            }}
                             className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium hover:underline"
                         >
                             {isExpanded ? (

@@ -26,6 +26,7 @@ export default function ClientPage() {
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [topRatedServiceId, setTopRatedServiceId] = useState<string | null>(null);
 
     // Check if user is logged in and is a client
     useEffect(() => {
@@ -95,6 +96,27 @@ export default function ClientPage() {
         setLoading(false);
     };
 
+    // Fetch top rated service by views
+    const fetchTopRatedService = async () => {
+        const { data, error } = await supabase
+            .from('service_views')
+            .select('service_id');
+
+        if (error || !data || data.length === 0) {
+            setTopRatedServiceId(null);
+            return;
+        }
+
+        const counts: Record<string, number> = {};
+        for (const row of data) {
+            counts[row.service_id] = (counts[row.service_id] || 0) + 1;
+        }
+
+        const topId = Object.entries(counts)
+            .sort(([, a], [, b]) => b - a)[0][0];
+        setTopRatedServiceId(topId);
+    };
+
     useEffect(() => {
         if (user) {
             fetchCategories();
@@ -104,6 +126,7 @@ export default function ClientPage() {
     useEffect(() => {
         if (user) {
             fetchServices();
+            fetchTopRatedService();
         }
     }, [user, selectedCategory]);
 
@@ -139,6 +162,14 @@ export default function ClientPage() {
             service.categories?.name.toLowerCase().includes(query)
         );
     });
+
+    const handleServiceView = async (serviceId: string) => {
+        if (!user) return;
+        await supabase
+            .from('service_views')
+            .insert({ service_id: serviceId, viewer_id: user.id });
+        fetchTopRatedService();
+    };
 
     const handleContactFreelancer = async (serviceId: string, freelancerId: string) => {
         if (!user) return;
@@ -291,7 +322,9 @@ export default function ClientPage() {
                                     key={service.id}
                                     service={service}
                                     showStatus={false}
+                                    topRated={topRatedServiceId === service.id}
                                     onContact={handleContactFreelancer}
+                                    onView={handleServiceView}
                                 />
                             ))}
                         </div>
