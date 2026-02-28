@@ -6,7 +6,7 @@ import { createBrowserClient } from '@supabase/ssr';
 
 import { Button } from '@/components/ui/Button';
 import { Upload, DollarSign, Tag, Type, FileText, Image as ImageIcon, X, Loader2, Check, ArrowLeft, Eye, Star } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -175,6 +175,12 @@ export default function CreateServicePage() {
         }
     };
 
+    function isAllowedPostingDay() {
+        const today = new Date().getDay();
+        // 1 = Monday, 4 = Thursday
+        return today === 1 || today === 4;
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -193,11 +199,97 @@ export default function CreateServicePage() {
             }
 
             const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+
             if (authError || !user) {
                 toast.error('You must be logged in to create a service');
                 router.push('/login');
                 return;
             }
+
+
+            // ===============================
+            // FREE TIER RESTRICTIONS
+            // ===============================
+
+            // Get freelancer data
+            const { data: freelancer } = await supabase
+                .from('users')
+                .select('subscription_tier, level_id')
+                .eq('id', user.id)
+                .single();
+
+            if (freelancer?.subscription_tier === 'free') {
+
+                // Rule 1 — allowed days
+                if (!isAllowedPostingDay()) {
+                    toast.error('🎰 EZA MSH L TANEN L KHAMEES!! Free tier freelancers can only post on Monday and Thursday.');
+                    setLoading(false);
+                    return;
+                }
+
+                // Rule 2 — daily post limit
+                const today = new Date().toISOString().split('T')[0];
+
+                const { data: tracker } = await supabase
+                    .from('daily_post_tracker')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('post_date', today)
+                    .single();
+
+                if (tracker && tracker.post_count >= 1) {
+                    toast.error('You already posted a service today. You can post once per day');
+                    setLoading(false);
+                    return;
+                }
+            }
+
+
+            // Rule 3 — price validation (ALL freelancers)
+
+            if (!freelancer) {
+                toast.error('Freelancer account not found.');
+                return;
+            }
+
+            const { level_id } = freelancer;
+
+
+            const { data: category } = await supabase
+                .from('categories')
+                .select('calculated_median_price')
+                .eq('id', parseInt(formData.category_id))
+                .single();
+
+            const { data: level } = await supabase
+                .from('account_levels')
+                .select('price_multiplier')
+                .eq('id', level_id)
+                .single();
+
+            if (!category || !level) {
+                toast.error('Pricing configuration error');
+                setLoading(false);
+                return;
+            }
+
+            const median = Number(category.calculated_median_price);
+            const multiplier = Number(level.price_multiplier);
+
+            const maxPrice = median * multiplier;
+            const minPrice = maxPrice * 0.7;
+            const enteredPrice = Number(formData.price);
+
+            if (enteredPrice > maxPrice || enteredPrice < minPrice) {
+                toast.error(
+                    `Price must be between $${minPrice.toFixed(0)} and $${maxPrice.toFixed(0)} for your level.`
+                );
+                setLoading(false);
+                return;
+            }
+
+
 
             const { data: service, error: serviceError } = await supabase
                 .from('services')
@@ -224,6 +316,22 @@ export default function CreateServicePage() {
             setCreatedServiceId(service.id);
             setShowSuccessModal(true);
 
+
+            // Update daily post tracker
+            if (freelancer?.subscription_tier === 'free') {
+                const today = new Date().toISOString().split('T')[0];
+
+                await supabase
+                    .from('daily_post_tracker')
+                    .upsert({
+                        user_id: user.id,
+                        post_date: today,
+                        post_count: 1
+                    });
+            }
+
+
+
         } catch (error: unknown) {
             console.error('Error in handleSubmit:', error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to create service';
@@ -245,6 +353,7 @@ export default function CreateServicePage() {
     return (
 
         <div className="max-w-5xl mx-auto">
+            <Toaster />
             <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
                 {/* Header */}
                 <div className="bg-cedar-dark p-8 text-white relative overflow-hidden">
